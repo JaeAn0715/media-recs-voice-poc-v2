@@ -1,0 +1,182 @@
+[
+  {
+    "id": "inception",
+    "title": "Inception",
+    "type": "movie",
+    "year": 2010,
+    "genres": ["sci-fi", "thriller", "action"],
+    "moods": ["mind-bending", "intense", "exciting"],
+    "description": "A thief who steals corporate secrets through dream-sharing technology is given a chance to erase his criminal record."
+  },
+  {
+    "id": "the-matrix",
+    "title": "The Matrix",
+    "type": "movie",
+    "year": 1999,
+    "genres": ["sci-fi", "action"],
+    "moods": ["mind-bending", "intense", "exciting"],
+    "description": "A hacker discovers reality is a simulation and joins a rebellion against the machines that control humanity."
+  },
+  {
+    "id": "arrival",
+    "title": "Arrival",
+    "type": "movie",
+    "year": 2016,
+    "genres": ["sci-fi", "drama"],
+    "moods": ["thoughtful", "emotional", "calm"],
+    "description": "A linguist works with the military to communicate with alien visitors and unravel their purpose on Earth."
+  },
+  {
+    "id": "spirited-away",
+    "title": "Spirited Away",
+    "type": "movie",
+    "year": 2001,
+    "genres": ["animation", "fantasy", "family"],
+    "moods": ["whimsical", "heartwarming", "magical"],
+    "description": "A young girl wanders into a spirit world and must work to free her parents and find her way home."
+  },
+  {
+    "id": "the-grand-budapest-hotel",
+    "title": "The Grand Budapest Hotel",
+    "type": "movie",
+    "year": 2014,
+    "genres": ["comedy", "drama"],
+    "moods": ["whimsical", "witty", "lighthearted"],
+    "description": "A concierge and his protege become embroiled in a theft, a fortune, and a family feud at a famous hotel."
+  },
+  {
+    "id": "parasite",
+    "title": "Parasite",
+    "type": "movie",
+    "year": 2019,
+    "genres": ["thriller", "drama", "comedy"],
+    "moods": ["intense", "thoughtful", "dark"],
+    "description": "A poor family schemes to become employed by a wealthy household, with unexpected and dramatic consequences."
+  },
+  {
+    "id": "mad-max-fury-road",
+    "title": "Mad Max: Fury Road",
+    "type": "movie",
+    "year": 2015,
+    "genres": ["action", "adventure", "sci-fi"],
+    "moods": ["intense", "exciting", "thrilling"],
+    "description": "In a post-apocalyptic wasteland, a woman rebels against a tyrant in search of her homeland with a group of female prisoners."
+  },
+  {
+    "id": "amelie",
+    "title": "Amelie",
+    "type": "movie",
+    "year": 2001,
+    "genres": ["comedy", "romance"],
+    "moods": ["whimsical", "heartwarming", "lighthearted"],
+    "description": "A shy Parisian waitress decides to change the lives of those around her for the better while discovering love."
+  },
+  {
+    "id": "coco",
+    "title": "Coco",
+    "type": "movie",
+    "year": 2017,
+    "genres": ["animation", "family", "fantasy"],
+    "moods": ["heartwarming", "emotional", "magical"],
+    "description": "A boy dreaming of becoming a musician journeys to the Land of the Dead to unlock his family's history."
+  },
+  {
+    "id": "knives-out",
+    "title": "Knives Out",
+    "type": "movie",
+    "year": 2019,
+    "genres": ["mystery", "comedy", "thriller"],
+    "moods": ["witty", "intriguing", "lighthearted"],
+    "description": "A master detective investigates the eccentric family of a wealthy novelist found dead after his birthday party."
+  },
+  {
+    "id": "her",
+    "title": "Her",
+    "type": "movie",
+    "year": 2013,
+    "genres": ["romance", "sci-fi", "drama"],
+    "moods": ["emotional", "thoughtful", "melancholy"],
+    "description": "A lonely writer develops an unlikely relationship with an operating system designed to meet his every need."
+  },
+  {
+    "id": "the-lord-of-the-rings",
+    "title": "The Lord of the Rings: The Fellowship of the Ring",
+    "type": "movie",
+    "year": 2001,
+    "genres": ["fantasy", "adventure", "action"],
+    "moods": ["epic", "exciting", "magical"],
+    "description": "A hobbit and a fellowship set out to destroy a powerful ring and defeat the dark lord who created it."
+  },
+  {
+    "id": "breaking-bad",
+    "title": "Breaking Bad",
+    "type": "series",
+    "year": 2008,
+    "genres": ["drama", "thriller", "crime"],
+    "moods": ["intense", "dark", "gripping"],
+    "description": "A chemistry teacher turned methamphetamine producer navigates the dangerous world of drugs and crime."
+  },
+  {
+    "id": "the-office",
+    "title": "The Office",
+    "type": "series",
+    "year": 2005,
+    "genres": ["comedy"],
+    "moods": ["lighthearted", "witty", "feel-good"],
+    "description": "A mockumentary follows the everyday lives of office employees at a paper company in Scranton, Pennsylvania."
+  },
+  {
+    "id": "stranger-things",
+    "title": "Stranger Things",
+    "type": "series",
+    "year": 2016,
+    "genres": ["sci-fi", "horror", "drama"],
+    "moods": ["nostalgic", "thrilling", "mysterious"],
+    "description": "A group of kids in a small town uncover supernatural mysteries and government experiments in the 1980s."
+  },
+  {
+    "id": "fleabag",
+    "title": "Fleabag",
+    "type": "series",
+    "year": 2016,
+    "genres": ["comedy", "drama"],
+    "moods": ["witty", "emotional", "dark"],
+    "description": "A sharp, grief-stricken woman navigates modern life and relationships in London while breaking the fourth wall."
+  },
+  {
+    "id": "planet-earth",
+    "title": "Planet Earth",
+    "type": "series",
+    "year": 2006,
+    "genres": ["documentary", "nature"],
+    "moods": ["calm", "awe-inspiring", "relaxing"],
+    "description": "A landmark documentary series exploring the natural wonders and diverse habitats of our planet."
+  },
+  {
+    "id": "spider-man-into-the-spider-verse",
+    "title": "Spider-Man: Into the Spider-Verse",
+    "type": "movie",
+    "year": 2018,
+    "genres": ["animation", "action", "adventure"],
+    "moods": ["exciting", "feel-good", "stylish"],
+    "description": "A teenager becomes Spider-Man and teams up with heroes from other dimensions to save the multiverse."
+  },
+  {
+    "id": "whiplash",
+    "title": "Whiplash",
+    "type": "movie",
+    "year": 2014,
+    "genres": ["drama", "music"],
+    "moods": ["intense", "gripping", "emotional"],
+    "description": "An ambitious young drummer enrolls at a cutthroat music conservatory under a ruthless and demanding instructor."
+  },
+  {
+    "id": "the-good-place",
+    "title": "The Good Place",
+    "type": "series",
+    "year": 2016,
+    "genres": ["comedy", "fantasy"],
+    "moods": ["lighthearted", "feel-good", "witty"],
+    "description": "A woman wakes up in the afterlife and tries to become a better person with the help of an ethics professor."
+  }
+]

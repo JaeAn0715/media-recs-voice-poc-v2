@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Media Recs · Voice POC</title>
+    <link rel="stylesheet" href="/styles.css" />
+    <link rel="icon" href="data:," />
+  </head>
+  <body>
+    <main class="app">
+      <header class="hero">
+        <div class="badge">POC v2</div>
+        <h1>Voice Media Recommender</h1>
+        <p class="subtitle">
+          Ask for something to watch — by genre, mood, era, or vibe. Speak it or type it.
+        </p>
+      </header>
+
+      <section class="controls">
+        <form id="query-form" class="query-form" autocomplete="off">
+          <input
+            id="query-input"
+            class="query-input"
+            type="text"
+            placeholder="e.g. a relaxing documentary, or an intense 90s sci-fi movie"
+            aria-label="What do you feel like watching?"
+          />
+          <button id="mic-button" class="mic-button" type="button" title="Speak your request" aria-label="Speak your request">
+            <span class="mic-icon" aria-hidden="true">&#127908;</span>
+          </button>
+          <button id="submit-button" class="submit-button" type="submit">Recommend</button>
+        </form>
+
+        <div class="suggestions" id="suggestions">
+          <span class="suggestions-label">Try:</span>
+          <button class="chip" type="button">a funny feel-good show</button>
+          <button class="chip" type="button">intense sci-fi from the 90s</button>
+          <button class="chip" type="button">a heartwarming animated movie</button>
+          <button class="chip" type="button">a relaxing nature documentary</button>
+        </div>
+
+        <p id="status" class="status" role="status" aria-live="polite"></p>
+      </section>
+
+      <section id="spoken" class="spoken" hidden>
+        <span class="spoken-icon" aria-hidden="true">&#128266;</span>
+        <p id="spoken-text"></p>
+      </section>
+
+      <section id="results" class="results" aria-live="polite"></section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

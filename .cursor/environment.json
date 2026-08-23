@@ -1,0 +1,17 @@
+{
+  "name": "media-recs-voice-poc-v2",
+  "install": "npm install",
+  "terminals": [
+    {
+      "name": "dev-server",
+      "command": "npm start",
+      "description": "Runs the media recommendation server on http://localhost:3000"
+    }
+  ],
+  "ports": [
+    {
+      "name": "web",
+      "port": 3000
+    }
+  ]
+}
