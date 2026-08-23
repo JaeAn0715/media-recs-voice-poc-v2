@@ -15,6 +15,11 @@
   box-sizing: border-box;
 }
 
+/* Ensure the [hidden] attribute wins over component display rules (e.g. .spoken uses flex). */
+[hidden] {
+  display: none !important;
+}
+
 body {
   margin: 0;
   font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
