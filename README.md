@@ -62,6 +62,16 @@ npm run dev
 | `VITE_SPOTIFY_CLIENT_ID` | Spotify 앱 Client ID |
 | `VITE_SPOTIFY_REDIRECT_URI` | OAuth 콜백 URI (기본: `http://localhost:5173/callback`) |
 
+## Vercel Deployment Preview
+
+이 프로젝트는 Vercel MCP(`https://mcp.vercel.com`)로 배포 프리뷰를 조회합니다.
+
+1. Cursor에서 **Customize → MCP** 또는 [Integrations & MCP](https://cursor.com/dashboard)에 Vercel 서버를 추가합니다.
+2. `Needs login`을 눌러 Vercel 계정으로 OAuth 인증합니다.
+3. [Vercel Dashboard](https://vercel.com/new)에서 이 GitHub 리포지토리를 Import하면 PR마다 Preview URL이 생성됩니다.
+
+Cloud Agent에서 MCP를 쓰려면 Cursor Dashboard의 Team MCP에도 `https://mcp.vercel.com`을 등록해야 합니다.
+
 ## 기술 스택
 
 - React 19 + TypeScript
@@ -69,3 +79,4 @@ npm run dev
 - Spotify Web API + Web Playback SDK (OAuth PKCE)
 - OpenAI Chat Completions API
 - Web Speech API
+- Vercel (Deployment Preview + MCP)
