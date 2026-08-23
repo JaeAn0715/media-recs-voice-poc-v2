@@ -26,6 +26,10 @@ export function CredentialsForm({
         <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noreferrer">
           Client ID 확인하기
         </a>
+        <p className="credentials-hint">
+          Client Secret(Key)는 넣지 마세요. 브라우저 앱은 Spotify PKCE라 Client ID만
+          사용하고, 로그인 후 Access Token이 Open API 키 역할을 합니다.
+        </p>
       </div>
       <div className="client-id-field">
         <label htmlFor="openai-api-key">OpenAI API Key</label>

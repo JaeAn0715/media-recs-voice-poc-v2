@@ -13,7 +13,7 @@
 ## 사전 요구사항
 
 - Node.js 18+
-- [Spotify Developer](https://developer.spotify.com/dashboard) 앱 (Client ID)
+- [Spotify Developer](https://developer.spotify.com/dashboard) 앱 (Client ID만. Client Secret은 브라우저 PKCE에 사용하지 않음)
 - [OpenAI API Key](https://platform.openai.com/api-keys)
 - **Spotify Premium** 계정 (Web Playback SDK 필수)
 
