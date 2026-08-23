@@ -1,3 +1,4 @@
+import { getSpotifyClientId as readStoredClientId } from './credentials';
 import { generateCodeChallenge, generateCodeVerifier } from './pkce';
 import type { SpotifyTrack } from '../types';
 
@@ -17,22 +18,9 @@ const TOKEN_KEY = 'spotify_access_token';
 const TOKEN_EXPIRY_KEY = 'spotify_token_expiry';
 const VERIFIER_KEY = 'spotify_code_verifier';
 const AUTH_STATE_KEY = 'spotify_auth_state';
-const CLIENT_ID_KEY = 'spotify_client_id';
 
 export function getConfiguredClientId(): string {
-  return (
-    import.meta.env.VITE_SPOTIFY_CLIENT_ID ||
-    localStorage.getItem(CLIENT_ID_KEY) ||
-    ''
-  ).trim();
-}
-
-export function saveSpotifyClientId(clientId: string): void {
-  const normalized = clientId.trim();
-  if (!normalized) {
-    throw new Error('Spotify Client ID를 입력해 주세요.');
-  }
-  localStorage.setItem(CLIENT_ID_KEY, normalized);
+  return readStoredClientId();
 }
 
 function getClientId(): string {

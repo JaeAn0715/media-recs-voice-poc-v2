@@ -28,21 +28,19 @@
 ## 설치 및 실행
 
 ```bash
-cp .env.example .env
-# .env 파일에 API 키 입력
-
 npm install
 npm run dev
 ```
 
-브라우저에서 `http://localhost:5173` 접속
+브라우저에서 `http://127.0.0.1:5173` 접속 후 화면에서 Spotify Client ID와 OpenAI API Key를 입력합니다. 키는 localStorage에 저장됩니다.
 
 ## 사용 방법
 
-1. **Spotify로 로그인** 클릭
-2. 마이크 버튼을 누르고 노래 요청 (예: "아이유 좋은 날 틀어줘", "보헤미안 랩소디 재생해줘")
-3. ChatGPT가 제목을 추출하고 Spotify에서 검색·재생
-4. 마지막 재생 곡은 로컬 스토리지에 자동 저장
+1. Spotify Client ID와 OpenAI API Key를 입력합니다
+2. **Spotify로 로그인**을 클릭합니다
+3. 마이크 버튼을 누르고 노래 요청 (예: "아이유 좋은 날 틀어줘")
+4. ChatGPT가 제목을 추출하고 Spotify에서 검색·재생합니다
+5. 마지막 재생 곡은 localStorage에 자동 저장됩니다
 
 ## 아키텍처
 
@@ -60,8 +58,8 @@ npm run dev
 
 | 변수 | 설명 |
 |------|------|
-| `VITE_OPENAI_API_KEY` | OpenAI API 키 |
-| `VITE_SPOTIFY_CLIENT_ID` | Spotify 앱 Client ID |
+| `VITE_OPENAI_API_KEY` | (선택) OpenAI API 키 초기값. 화면 입력이 우선이며 브라우저에 저장됩니다. |
+| `VITE_SPOTIFY_CLIENT_ID` | (선택) Spotify Client ID 초기값. 화면 입력이 우선이며 브라우저에 저장됩니다. |
 | `VITE_SPOTIFY_REDIRECT_URI` | OAuth 콜백 URI (로컬: `http://127.0.0.1:5173/callback`, 배포: `https://media-recs-voice-poc-v2.vercel.app/callback`) |
 
 ## Vercel Deployment Preview

@@ -1,11 +1,12 @@
 import type { ExtractedSong } from '../types';
+import { getOpenAIApiKey } from './credentials';
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 
 export async function extractSongFromUtterance(utterance: string): Promise<ExtractedSong> {
-  const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
+  const apiKey = getOpenAIApiKey();
   if (!apiKey) {
-    throw new Error('VITE_OPENAI_API_KEY 환경 변수가 설정되지 않았습니다.');
+    throw new Error('OpenAI API Key가 없습니다. 화면에 입력한 뒤 저장해 주세요.');
   }
 
   const response = await fetch(OPENAI_API_URL, {

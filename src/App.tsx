@@ -1,18 +1,20 @@
 import { useEffect, useState } from 'react';
 import { VoicePlayer } from './components/VoicePlayer';
 import { AuthCallback } from './components/AuthCallback';
+import { CredentialsForm } from './components/CredentialsForm';
 import {
-  getAccessToken,
-  getConfiguredClientId,
-  initiateLogin,
-  saveSpotifyClientId,
-} from './services/spotify';
+  getOpenAIApiKey,
+  getSpotifyClientId,
+  saveBrowserCredentials,
+} from './services/credentials';
+import { getAccessToken, initiateLogin } from './services/spotify';
 import './App.css';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
-  const [clientId, setClientId] = useState(getConfiguredClientId);
+  const [clientId, setClientId] = useState(getSpotifyClientId);
+  const [openAIApiKey, setOpenAIApiKey] = useState(getOpenAIApiKey);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
@@ -42,7 +44,7 @@ function App() {
     setIsLoggingIn(true);
 
     try {
-      saveSpotifyClientId(clientId);
+      saveBrowserCredentials(clientId, openAIApiKey);
       await initiateLogin();
     } catch (error) {
       setLoginError(
@@ -63,26 +65,12 @@ function App() {
             <li>🤖 ChatGPT가 제목 추출</li>
             <li>🎵 Spotify에서 재생</li>
           </ul>
-          {!import.meta.env.VITE_SPOTIFY_CLIENT_ID && (
-            <div className="client-id-field">
-              <label htmlFor="spotify-client-id">Spotify Client ID</label>
-              <input
-                id="spotify-client-id"
-                value={clientId}
-                onChange={(event) => setClientId(event.target.value)}
-                placeholder="Spotify Developer Dashboard의 Client ID"
-                autoComplete="off"
-                spellCheck={false}
-              />
-              <a
-                href="https://developer.spotify.com/dashboard"
-                target="_blank"
-                rel="noreferrer"
-              >
-                Client ID 확인하기
-              </a>
-            </div>
-          )}
+          <CredentialsForm
+            clientId={clientId}
+            openAIApiKey={openAIApiKey}
+            onClientIdChange={setClientId}
+            onOpenAIApiKeyChange={setOpenAIApiKey}
+          />
           {loginError && <p className="login-error">{loginError}</p>}
           <button
             className="login-button"

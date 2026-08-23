@@ -3,8 +3,14 @@ import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 import { useSpotifyPlayer } from '../hooks/useSpotifyPlayer';
 import { extractSongFromUtterance } from '../services/openai';
 import { searchTrack } from '../services/spotify';
+import {
+  getOpenAIApiKey,
+  getSpotifyClientId,
+  saveBrowserCredentials,
+} from '../services/credentials';
 import { getLastPlayedSong, saveLastPlayedSong } from '../services/storage';
 import type { LastPlayedSong, SpotifyTrack } from '../types';
+import { CredentialsForm } from './CredentialsForm';
 
 type Status = 'idle' | 'processing' | 'playing' | 'error';
 
@@ -27,6 +33,9 @@ export function VoicePlayer() {
   const [currentTrack, setCurrentTrack] = useState<SpotifyTrack | null>(null);
   const [lastPlayed, setLastPlayed] = useState<LastPlayedSong | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [clientId, setClientId] = useState(getSpotifyClientId);
+  const [openAIApiKey, setOpenAIApiKey] = useState(getOpenAIApiKey);
+  const [credentialsSaved, setCredentialsSaved] = useState(false);
 
   useEffect(() => {
     setLastPlayed(getLastPlayedSong());
@@ -157,6 +166,33 @@ export function VoicePlayer() {
           </div>
         </div>
       )}
+
+      <details className="credentials-panel">
+        <summary>API 키 설정</summary>
+        <CredentialsForm
+          clientId={clientId}
+          openAIApiKey={openAIApiKey}
+          onClientIdChange={setClientId}
+          onOpenAIApiKeyChange={setOpenAIApiKey}
+        />
+        <button
+          className="save-keys-button"
+          type="button"
+          onClick={() => {
+            try {
+              saveBrowserCredentials(clientId, openAIApiKey);
+              setCredentialsSaved(true);
+              setError(null);
+            } catch (err) {
+              setCredentialsSaved(false);
+              setError(err instanceof Error ? err.message : '키 저장에 실패했습니다.');
+            }
+          }}
+        >
+          브라우저에 키 저장
+        </button>
+        {credentialsSaved && <p className="credentials-saved">이 브라우저에 저장했습니다.</p>}
+      </details>
 
       {lastPlayed && (
         <div className="last-played">
