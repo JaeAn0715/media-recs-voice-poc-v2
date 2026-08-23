@@ -1,0 +1,306 @@
+:root {
+  --bg: #0a0a0f;
+  --surface: #14141f;
+  --surface-hover: #1c1c2e;
+  --accent: #1db954;
+  --accent-glow: rgba(29, 185, 84, 0.3);
+  --text: #f0f0f5;
+  --text-muted: #8888a0;
+  --error: #ff4757;
+  --border: #2a2a3e;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  line-height: 1.5;
+  color: var(--text);
+  background-color: var(--bg);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  min-height: 100vh;
+}
+
+.app {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+}
+
+.app.loading {
+  background: var(--bg);
+}
+
+/* Login */
+.login-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 3rem;
+  text-align: center;
+  max-width: 420px;
+  width: 100%;
+}
+
+.login-card h1 {
+  font-size: 1.8rem;
+  margin-bottom: 0.5rem;
+}
+
+.login-card > p {
+  color: var(--text-muted);
+  margin-bottom: 2rem;
+}
+
+.feature-list {
+  list-style: none;
+  text-align: left;
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background: var(--bg);
+  border-radius: 12px;
+}
+
+.feature-list li {
+  padding: 0.5rem 0;
+  color: var(--text-muted);
+}
+
+.login-button {
+  background: var(--accent);
+  color: #000;
+  border: none;
+  border-radius: 50px;
+  padding: 0.9rem 2.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  width: 100%;
+}
+
+.login-button:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 20px var(--accent-glow);
+}
+
+.premium-note {
+  margin-top: 1rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* Voice Player */
+.voice-player {
+  max-width: 520px;
+  width: 100%;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 2.5rem;
+}
+
+.header h1 {
+  font-size: 1.6rem;
+  font-weight: 700;
+}
+
+.subtitle {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  margin-top: 0.4rem;
+}
+
+/* Mic */
+.mic-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.2rem;
+  margin-bottom: 2rem;
+}
+
+.mic-button {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background: var(--surface);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.mic-button:not(:disabled):hover {
+  border-color: var(--accent);
+  background: var(--surface-hover);
+}
+
+.mic-button.listening {
+  border-color: var(--accent);
+  background: var(--accent-glow);
+  animation: pulse 1.5s infinite;
+}
+
+.mic-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.mic-icon {
+  font-size: 2.5rem;
+}
+
+.mic-hint {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  text-align: center;
+  min-height: 1.4em;
+}
+
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 var(--accent-glow); }
+  50% { box-shadow: 0 0 0 16px transparent; }
+}
+
+/* Boxes */
+.transcript-box,
+.status-box,
+.last-played {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem 1.2rem;
+  margin-bottom: 1rem;
+}
+
+.label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  display: block;
+  margin-bottom: 0.4rem;
+}
+
+.transcript-box p {
+  font-size: 1rem;
+}
+
+.status-box {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.status-box.processing {
+  border-color: var(--accent);
+}
+
+.status-box.error {
+  border-color: var(--error);
+  color: var(--error);
+}
+
+/* Now Playing */
+.now-playing {
+  display: flex;
+  gap: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--accent);
+  border-radius: 16px;
+  padding: 1.2rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 0 30px var(--accent-glow);
+}
+
+.album-art {
+  width: 80px;
+  height: 80px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.track-info {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+}
+
+.track-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.track-artist {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.track-id {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  margin-top: 0.3rem;
+}
+
+/* Last Played */
+.last-played p {
+  font-size: 0.95rem;
+}
+
+.timestamp {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* Spinner */
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+.app.loading .spinner {
+  width: 40px;
+  height: 40px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Auth Callback */
+.auth-callback {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.error-text {
+  color: var(--error);
+}
+
+.auth-callback a {
+  color: var(--accent);
+}
