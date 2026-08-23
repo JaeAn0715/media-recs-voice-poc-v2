@@ -25,8 +25,17 @@ function getClientId(): string {
   return clientId;
 }
 
-function getRedirectUri(): string {
-  return import.meta.env.VITE_SPOTIFY_REDIRECT_URI || `${window.location.origin}/callback`;
+export function getRedirectUri(): string {
+  if (import.meta.env.VITE_SPOTIFY_REDIRECT_URI) {
+    return import.meta.env.VITE_SPOTIFY_REDIRECT_URI;
+  }
+
+  // Spotify no longer allows `localhost`; use the loopback IP instead.
+  const origin = window.location.origin.replace(
+    'http://localhost',
+    'http://127.0.0.1',
+  );
+  return `${origin}/callback`;
 }
 
 export function getAccessToken(): string | null {

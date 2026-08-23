@@ -20,7 +20,9 @@
 ## Spotify 앱 설정
 
 1. [Spotify Developer Dashboard](https://developer.spotify.com/dashboard)에서 앱 생성
-2. **Redirect URIs**에 `http://localhost:5173/callback` 추가
+2. **Redirect URIs**에 아래를 모두 추가
+   - `http://127.0.0.1:5173/callback` (로컬, `localhost`는 Spotify에서 불가)
+   - `https://media-recs-voice-poc-v2.vercel.app/callback` (Vercel 배포)
 3. Client ID 복사
 
 ## 설치 및 실행
@@ -60,7 +62,7 @@ npm run dev
 |------|------|
 | `VITE_OPENAI_API_KEY` | OpenAI API 키 |
 | `VITE_SPOTIFY_CLIENT_ID` | Spotify 앱 Client ID |
-| `VITE_SPOTIFY_REDIRECT_URI` | OAuth 콜백 URI (기본: `http://localhost:5173/callback`) |
+| `VITE_SPOTIFY_REDIRECT_URI` | OAuth 콜백 URI (로컬: `http://127.0.0.1:5173/callback`, 배포: `https://media-recs-voice-poc-v2.vercel.app/callback`) |
 
 ## Vercel Deployment Preview
 
