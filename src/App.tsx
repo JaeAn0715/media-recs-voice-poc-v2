@@ -1,12 +1,20 @@
 import { useEffect, useState } from 'react';
 import { VoicePlayer } from './components/VoicePlayer';
 import { AuthCallback } from './components/AuthCallback';
-import { getAccessToken, initiateLogin } from './services/spotify';
+import {
+  getAccessToken,
+  getConfiguredClientId,
+  initiateLogin,
+  saveSpotifyClientId,
+} from './services/spotify';
 import './App.css';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
+  const [clientId, setClientId] = useState(getConfiguredClientId);
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   const isCallback = window.location.pathname === '/callback';
 
@@ -29,6 +37,21 @@ function App() {
     );
   }
 
+  const handleLogin = async () => {
+    setLoginError(null);
+    setIsLoggingIn(true);
+
+    try {
+      saveSpotifyClientId(clientId);
+      await initiateLogin();
+    } catch (error) {
+      setLoginError(
+        error instanceof Error ? error.message : 'Spotify 로그인을 시작하지 못했습니다.',
+      );
+      setIsLoggingIn(false);
+    }
+  };
+
   if (!isAuthenticated) {
     return (
       <div className="app login">
@@ -40,8 +63,33 @@ function App() {
             <li>🤖 ChatGPT가 제목 추출</li>
             <li>🎵 Spotify에서 재생</li>
           </ul>
-          <button className="login-button" onClick={() => initiateLogin()}>
-            Spotify로 로그인
+          {!import.meta.env.VITE_SPOTIFY_CLIENT_ID && (
+            <div className="client-id-field">
+              <label htmlFor="spotify-client-id">Spotify Client ID</label>
+              <input
+                id="spotify-client-id"
+                value={clientId}
+                onChange={(event) => setClientId(event.target.value)}
+                placeholder="Spotify Developer Dashboard의 Client ID"
+                autoComplete="off"
+                spellCheck={false}
+              />
+              <a
+                href="https://developer.spotify.com/dashboard"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Client ID 확인하기
+              </a>
+            </div>
+          )}
+          {loginError && <p className="login-error">{loginError}</p>}
+          <button
+            className="login-button"
+            onClick={handleLogin}
+            disabled={isLoggingIn}
+          >
+            {isLoggingIn ? 'Spotify로 이동 중...' : 'Spotify로 로그인'}
           </button>
           <p className="premium-note">* Spotify Premium 계정이 필요합니다</p>
         </div>

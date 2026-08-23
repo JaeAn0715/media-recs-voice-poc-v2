@@ -16,11 +16,31 @@ const SCOPES = [
 const TOKEN_KEY = 'spotify_access_token';
 const TOKEN_EXPIRY_KEY = 'spotify_token_expiry';
 const VERIFIER_KEY = 'spotify_code_verifier';
+const AUTH_STATE_KEY = 'spotify_auth_state';
+const CLIENT_ID_KEY = 'spotify_client_id';
+
+export function getConfiguredClientId(): string {
+  return (
+    import.meta.env.VITE_SPOTIFY_CLIENT_ID ||
+    localStorage.getItem(CLIENT_ID_KEY) ||
+    ''
+  ).trim();
+}
+
+export function saveSpotifyClientId(clientId: string): void {
+  const normalized = clientId.trim();
+  if (!normalized) {
+    throw new Error('Spotify Client ID를 입력해 주세요.');
+  }
+  localStorage.setItem(CLIENT_ID_KEY, normalized);
+}
 
 function getClientId(): string {
-  const clientId = import.meta.env.VITE_SPOTIFY_CLIENT_ID;
+  const clientId = getConfiguredClientId();
   if (!clientId) {
-    throw new Error('VITE_SPOTIFY_CLIENT_ID 환경 변수가 설정되지 않았습니다.');
+    throw new Error(
+      'Spotify Client ID가 없습니다. Developer Dashboard의 Client ID를 입력해 주세요.',
+    );
   }
   return clientId;
 }
@@ -53,6 +73,7 @@ export function clearTokens(): void {
   sessionStorage.removeItem(TOKEN_KEY);
   sessionStorage.removeItem(TOKEN_EXPIRY_KEY);
   sessionStorage.removeItem(VERIFIER_KEY);
+  sessionStorage.removeItem(AUTH_STATE_KEY);
 }
 
 function storeToken(accessToken: string, expiresIn: number): void {
@@ -61,26 +82,35 @@ function storeToken(accessToken: string, expiresIn: number): void {
 }
 
 export async function initiateLogin(): Promise<void> {
+  const clientId = getClientId();
   const verifier = generateCodeVerifier();
   const challenge = await generateCodeChallenge(verifier);
+  const state = generateCodeVerifier();
   sessionStorage.setItem(VERIFIER_KEY, verifier);
+  sessionStorage.setItem(AUTH_STATE_KEY, state);
 
   const params = new URLSearchParams({
-    client_id: getClientId(),
+    client_id: clientId,
     response_type: 'code',
     redirect_uri: getRedirectUri(),
     scope: SCOPES,
+    state,
     code_challenge_method: 'S256',
     code_challenge: challenge,
   });
 
-  window.location.href = `${SPOTIFY_AUTH_URL}?${params.toString()}`;
+  window.location.assign(`${SPOTIFY_AUTH_URL}?${params.toString()}`);
 }
 
-export async function handleAuthCallback(code: string): Promise<void> {
+export async function handleAuthCallback(code: string, state: string | null): Promise<void> {
   const verifier = sessionStorage.getItem(VERIFIER_KEY);
+  const expectedState = sessionStorage.getItem(AUTH_STATE_KEY);
   if (!verifier) {
     throw new Error('인증 세션이 만료되었습니다. 다시 로그인해 주세요.');
+  }
+  if (!state || !expectedState || state !== expectedState) {
+    clearTokens();
+    throw new Error('Spotify 인증 상태가 일치하지 않습니다. 다시 로그인해 주세요.');
   }
 
   const response = await fetch(SPOTIFY_TOKEN_URL, {
@@ -103,6 +133,7 @@ export async function handleAuthCallback(code: string): Promise<void> {
   const data = await response.json();
   storeToken(data.access_token, data.expires_in);
   sessionStorage.removeItem(VERIFIER_KEY);
+  sessionStorage.removeItem(AUTH_STATE_KEY);
 }
 
 export async function searchTrack(title: string, artist?: string): Promise<SpotifyTrack> {

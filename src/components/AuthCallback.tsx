@@ -7,6 +7,7 @@ export function AuthCallback() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const code = params.get('code');
+    const state = params.get('state');
     const authError = params.get('error');
 
     if (authError) {
@@ -19,7 +20,7 @@ export function AuthCallback() {
       return;
     }
 
-    handleAuthCallback(code)
+    handleAuthCallback(code, state)
       .then(() => {
         window.location.href = '/';
       })
