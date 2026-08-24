@@ -13,6 +13,14 @@ export interface LastPlayedSong {
   playedAt: string;
 }
 
+export interface PlayedSong {
+  id: string;
+  title: string;
+  artist: string;
+  playedAt: string;
+  albumImage?: string;
+}
+
 export interface ExtractedSong {
   title: string;
   artist?: string;

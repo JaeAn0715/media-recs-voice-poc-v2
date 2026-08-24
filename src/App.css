@@ -498,6 +498,52 @@ body {
 }
 
 /* Last Played */
+.play-history {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem 1.2rem;
+  margin-bottom: 1rem;
+}
+
+.play-history-empty {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.play-history ul {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.play-history li {
+  display: flex;
+  gap: 0.8rem;
+  align-items: center;
+}
+
+.history-art {
+  width: 44px;
+  height: 44px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.history-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.history-artist {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
 .last-played p {
   font-size: 0.95rem;
 }

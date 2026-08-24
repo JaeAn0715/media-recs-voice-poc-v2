@@ -8,8 +8,8 @@ import {
   getSpotifyClientId,
   saveBrowserCredentials,
 } from '../services/credentials';
-import { getLastPlayedSong, saveLastPlayedSong } from '../services/storage';
-import type { LastPlayedSong, SpotifyTrack } from '../types';
+import { addPlayedSong, getPlayedSongs } from '../services/storage';
+import type { PlayedSong, SpotifyTrack } from '../types';
 import { CredentialsForm } from './CredentialsForm';
 
 type Status = 'idle' | 'processing' | 'playing' | 'error';
@@ -41,17 +41,18 @@ export function VoicePlayer() {
   const [logs, setLogs] = useState<PipelineLog[]>([]);
   const [textCommand, setTextCommand] = useState('');
   const [currentTrack, setCurrentTrack] = useState<SpotifyTrack | null>(null);
-  const [lastPlayed, setLastPlayed] = useState<LastPlayedSong | null>(null);
+  const [playHistory, setPlayHistory] = useState<PlayedSong[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [clientId, setClientId] = useState(getSpotifyClientId);
   const [openAIApiKey, setOpenAIApiKey] = useState(getOpenAIApiKey);
   const [credentialsSaved, setCredentialsSaved] = useState(false);
   const processedRef = useRef('');
   const logIdRef = useRef(0);
+  const runIdRef = useRef(0);
   const logEndRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    setLastPlayed(getLastPlayedSong());
+    setPlayHistory(getPlayedSongs());
   }, []);
 
   const appendLog = useCallback((step: string, text: string, state: LogState = 'running') => {
@@ -74,16 +75,22 @@ export function VoicePlayer() {
         return;
       }
 
+      const runId = runIdRef.current + 1;
+      runIdRef.current = runId;
+      logIdRef.current = 0;
       setStatus('processing');
       setError(null);
       setLogs([]);
       setCurrentTrack(null);
+
+      const stillCurrent = () => runIdRef.current === runId;
 
       appendLog('음성', `"${command}"가 입력되었습니다.`, 'done');
       const gptLog = appendLog('ChatGPT', '발화에서 검색할 노래 제목을 필터링하는 중...');
 
       try {
         const extracted = await extractSongFromUtterance(command);
+        if (!stillCurrent()) return;
         const queryLabel = extracted.artist
           ? `"${extracted.title}" - ${extracted.artist}`
           : `"${extracted.title}"`;
@@ -98,6 +105,7 @@ export function VoicePlayer() {
           `Spotify Open API로 ${queryLabel} 검색 중...`,
         );
         const track = await searchTrack(extracted.title, extracted.artist);
+        if (!stillCurrent()) return;
         const artistName = track.artists.map((artist) => artist.name).join(', ');
         setCurrentTrack(track);
         updateLog(
@@ -109,16 +117,20 @@ export function VoicePlayer() {
         const playLog = appendLog('재생', `"${track.name}"을(를) 재생합니다.`);
 
         await play(track.uri);
+        if (!stillCurrent()) return;
 
-        saveLastPlayedSong(track.name, artistName);
-        setLastPlayed({
-          title: track.name,
-          artist: artistName,
-          playedAt: new Date().toISOString(),
-        });
+        setPlayHistory(
+          addPlayedSong({
+            id: track.id,
+            title: track.name,
+            artist: artistName,
+            albumImage: track.album.images[0]?.url,
+          }),
+        );
         updateLog(playLog, `"${track.name}" — ${artistName} 재생을 시작했습니다.`, 'done');
         setStatus('playing');
       } catch (err) {
+        if (!stillCurrent()) return;
         const message = err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.';
         setStatus('error');
         setError(message);
@@ -158,15 +170,14 @@ export function VoicePlayer() {
       return;
     }
     processedRef.current = '';
+    runIdRef.current += 1;
+    logIdRef.current = 0;
     clearTranscript();
     clearSpeechError();
     setError(null);
     setStatus('idle');
-    setLogs((current) =>
-      current.length
-        ? current
-        : [{ id: 0, step: '대기', text: '마이크가 열렸습니다. 노래를 말씀해 주세요.', state: 'running' }],
-    );
+    setLogs([]);
+    setCurrentTrack(null);
     startListening();
   };
 
@@ -290,17 +301,29 @@ export function VoicePlayer() {
         {credentialsSaved && <p className="credentials-saved">이 브라우저에 저장했습니다.</p>}
       </details>
 
-      {lastPlayed && (
-        <div className="last-played">
-          <span className="label">마지막 재생</span>
-          <p>
-            {lastPlayed.title} — {lastPlayed.artist}
-          </p>
-          <span className="timestamp">
-            {new Date(lastPlayed.playedAt).toLocaleString('ko-KR')}
-          </span>
-        </div>
-      )}
+      <section className="play-history">
+        <span className="label">재생한 노래</span>
+        {playHistory.length === 0 ? (
+          <p className="play-history-empty">아직 재생한 노래가 없습니다.</p>
+        ) : (
+          <ul>
+            {playHistory.map((song) => (
+              <li key={`${song.id}-${song.playedAt}`}>
+                {song.albumImage && (
+                  <img src={song.albumImage} alt="" className="history-art" />
+                )}
+                <div>
+                  <p className="history-title">{song.title}</p>
+                  <p className="history-artist">{song.artist}</p>
+                  <span className="timestamp">
+                    {new Date(song.playedAt).toLocaleString('ko-KR')}
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       {!isReady && (
         <p className="player-ready-hint">Spotify 플레이어 연결 중... 검색은 바로 진행됩니다.</p>
