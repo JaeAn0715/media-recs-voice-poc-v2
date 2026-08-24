@@ -41,6 +41,8 @@ const ko = {
   saveKeysFailed: '키 저장에 실패했습니다.',
   playedSongs: '재생한 노래',
   noPlayedSongs: '아직 재생한 노래가 없습니다.',
+  clearPlayedSongs: '재생한 노래 전부 지우기',
+  clearPlayedSongsConfirm: '재생한 노래를 모두 지울까요?',
   playerConnecting: 'Spotify 플레이어 연결 중... 검색은 바로 진행됩니다.',
   unknownError: '알 수 없는 오류가 발생했습니다.',
   playFailed: '재생에 실패했습니다.',
@@ -134,6 +136,8 @@ const en: Record<keyof typeof ko, string> = {
   saveKeysFailed: 'Could not save keys.',
   playedSongs: 'Played songs',
   noPlayedSongs: 'No songs played yet.',
+  clearPlayedSongs: 'Clear all played songs',
+  clearPlayedSongsConfirm: 'Clear all played songs?',
   playerConnecting: 'Connecting Spotify player... Search still works.',
   unknownError: 'An unknown error occurred.',
   playFailed: 'Playback failed.',
@@ -218,7 +222,7 @@ export function t(
   return interpolate(table[key], vars);
 }
 
-function hasBatchim(text: string): boolean {
+export function hasBatchim(text: string): boolean {
   const last = text.trim().slice(-1);
   if (!last) return false;
   const code = last.charCodeAt(0);

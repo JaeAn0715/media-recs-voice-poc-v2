@@ -68,6 +68,11 @@ export function addPlayedSong(song: Omit<PlayedSong, 'playedAt'> & { playedAt?: 
   return history;
 }
 
+export function clearPlayedSongs(): void {
+  localStorage.removeItem(PLAY_HISTORY_KEY);
+  localStorage.removeItem(LAST_PLAYED_KEY);
+}
+
 export function getRecommendationSets(): RecommendationSet[] {
   try {
     const raw = localStorage.getItem(RECOMMENDATION_SETS_KEY);

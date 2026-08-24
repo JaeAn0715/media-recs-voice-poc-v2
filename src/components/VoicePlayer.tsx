@@ -9,7 +9,7 @@ import {
   getSpotifyClientId,
   saveBrowserCredentials,
 } from '../services/credentials';
-import { addPlayedSong, getPlayedSongs } from '../services/storage';
+import { addPlayedSong, clearPlayedSongs, getPlayedSongs } from '../services/storage';
 import type { PlayedSong, RecommendedTrack, SpotifyTrack } from '../types';
 import { CredentialsForm } from './CredentialsForm';
 import { RecommendationPanel } from './RecommendationPanel';
@@ -45,6 +45,7 @@ export function VoicePlayer() {
   const [textCommand, setTextCommand] = useState('');
   const [currentTrack, setCurrentTrack] = useState<SpotifyTrack | null>(null);
   const [playHistory, setPlayHistory] = useState<PlayedSong[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [clientId, setClientId] = useState(getSpotifyClientId);
   const [openAIApiKey, setOpenAIApiKey] = useState(getOpenAIApiKey);
@@ -387,36 +388,59 @@ export function VoicePlayer() {
         {credentialsSaved && <p className="credentials-saved">{t('keysSaved')}</p>}
       </details>
 
-      <section className="play-history">
-        <span className="label">{t('playedSongs')}</span>
-        {playHistory.length === 0 ? (
-          <p className="play-history-empty">{t('noPlayedSongs')}</p>
-        ) : (
-          <ul>
-            {playHistory.map((song) => (
-              <li key={`${song.id}-${song.playedAt}`}>
-                <button
-                  type="button"
-                  className="history-play-button"
-                  onClick={() => void playHistoryTrack(song)}
-                >
-                  {song.albumImage && (
-                    <img src={song.albumImage} alt="" className="history-art" />
-                  )}
-                  <div>
-                    <p className="history-title">{song.title}</p>
-                    <p className="history-artist">{song.artist}</p>
-                    <span className="timestamp">
-                      {new Date(song.playedAt).toLocaleString(locale === 'en' ? 'en-US' : 'ko-KR')}
-                    </span>
-                  </div>
-                  <span className="history-play-label">{t('play')}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      <details
+        className="play-history"
+        open={historyOpen}
+        onToggle={(event) => setHistoryOpen(event.currentTarget.open)}
+      >
+        <summary className="play-history-summary">
+          <span className="label">{t('playedSongs')}</span>
+        </summary>
+        <div className="play-history-body">
+          {playHistory.length === 0 ? (
+            <p className="play-history-empty">{t('noPlayedSongs')}</p>
+          ) : (
+            <>
+              <ul>
+                {playHistory.map((song) => (
+                  <li key={`${song.id}-${song.playedAt}`}>
+                    <button
+                      type="button"
+                      className="history-play-button"
+                      onClick={() => void playHistoryTrack(song)}
+                    >
+                      {song.albumImage && (
+                        <img src={song.albumImage} alt="" className="history-art" />
+                      )}
+                      <div>
+                        <p className="history-title">{song.title}</p>
+                        <p className="history-artist">{song.artist}</p>
+                        <span className="timestamp">
+                          {new Date(song.playedAt).toLocaleString(locale === 'en' ? 'en-US' : 'ko-KR')}
+                        </span>
+                      </div>
+                      <span className="history-play-label">{t('play')}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <button
+                type="button"
+                className="clear-history-button"
+                onClick={() => {
+                  if (!window.confirm(t('clearPlayedSongsConfirm'))) {
+                    return;
+                  }
+                  clearPlayedSongs();
+                  setPlayHistory([]);
+                }}
+              >
+                {t('clearPlayedSongs')}
+              </button>
+            </>
+          )}
+        </div>
+      </details>
 
       {!isReady && (
         <p className="player-ready-hint">{t('playerConnecting')}</p>

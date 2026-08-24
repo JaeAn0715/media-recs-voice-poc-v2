@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLocale } from '../context/LocaleContext';
-import { similarSongsHeading } from '../i18n';
+import { hasBatchim } from '../i18n';
 import { createRecommendationSet } from '../services/recommend';
 import { getRecommendationSets } from '../services/storage';
 import type { PlayedSong, RecommendationSet, RecommendedTrack } from '../types';
@@ -55,9 +55,31 @@ function TrackList({
   );
 }
 
-function setHeading(set: RecommendationSet, locale: 'ko' | 'en', fallback: string) {
-  const seedTitle = set.basedOn[0]?.title;
-  return seedTitle ? similarSongsHeading(seedTitle, locale) : fallback;
+function SimilarSongsHeading({
+  title,
+  fallback,
+}: {
+  title?: string;
+  fallback: string;
+}) {
+  const { locale } = useLocale();
+  if (!title) {
+    return fallback;
+  }
+  if (locale === 'en') {
+    return (
+      <>
+        Songs similar to <mark className="song-highlight">{title}</mark>
+      </>
+    );
+  }
+  const particle = hasBatchim(title) ? '과' : '와';
+  return (
+    <>
+      <mark className="song-highlight">{title}</mark>
+      {particle} 비슷한 노래
+    </>
+  );
 }
 
 export function RecommendationPanel({ playHistory, onPlayTrack }: RecommendationPanelProps) {
@@ -126,7 +148,10 @@ export function RecommendationPanel({ playHistory, onPlayTrack }: Recommendation
       {view === 'latest' && !isLoading && latest && (
         <div className="recommend-set">
           <h2 className="recommend-heading">
-            {setHeading(latest, locale, t('thisRecommendation'))}
+            <SimilarSongsHeading
+              title={latest.basedOn[0]?.title}
+              fallback={t('thisRecommendation')}
+            />
           </h2>
           <p className="recommend-meta">
             {formatTime(latest.createdAt, locale)} · {t('trackCount', { count: latest.tracks.length })}
@@ -148,7 +173,10 @@ export function RecommendationPanel({ playHistory, onPlayTrack }: Recommendation
             sets.map((set) => (
               <article key={set.id} className="recommend-set">
                 <h2 className="recommend-heading">
-                  {setHeading(set, locale, t('thisRecommendation'))}
+                  <SimilarSongsHeading
+                    title={set.basedOn[0]?.title}
+                    fallback={t('thisRecommendation')}
+                  />
                 </h2>
                 <p className="recommend-meta">
                   {formatTime(set.createdAt, locale)} · {t('trackCount', { count: set.tracks.length })}

@@ -546,9 +546,63 @@ body {
   overflow: hidden;
 }
 
-.play-history-empty {
+.play-history-summary {
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.play-history-summary::-webkit-details-marker,
+.play-history-summary::marker {
+  display: none;
+}
+
+.play-history-summary .label {
+  margin-bottom: 0;
+}
+
+.play-history-summary::after {
+  content: '▾';
   color: var(--text-muted);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
+}
+
+.play-history:not([open]) .play-history-summary::after {
+  content: '▸';
+}
+
+.play-history-body {
+  margin-top: 0.75rem;
+}
+
+.clear-history-button {
+  width: 100%;
+  margin-top: 0.85rem;
+  padding: 0.7rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-muted);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.clear-history-button:hover {
+  border-color: var(--error);
+  color: var(--error);
+}
+
+.song-highlight {
+  color: var(--accent);
+  background: rgba(29, 185, 84, 0.18);
+  padding: 0.05em 0.28em;
+  border-radius: 6px;
+  font-weight: 800;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
 }
 
 .play-history ul {
