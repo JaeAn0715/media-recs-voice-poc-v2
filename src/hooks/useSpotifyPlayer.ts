@@ -13,6 +13,7 @@ function sleep(ms: number) {
 export function useSpotifyPlayer() {
   const [deviceId, setDeviceId] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
+  const [isPaused, setIsPaused] = useState(true);
   const [playerError, setPlayerError] = useState<string | null>(null);
   const playerRef = useRef<SpotifyPlayer | null>(null);
   const deviceIdRef = useRef<string | null>(null);
@@ -56,6 +57,14 @@ export function useSpotifyPlayer() {
 
       player.addListener('playback_error', ({ message }: { message: string }) => {
         setPlayerError(`재생 오류: ${message}`);
+      });
+
+      player.addListener('player_state_changed', (state: { paused?: boolean } | null) => {
+        if (!state) {
+          setIsPaused(true);
+          return;
+        }
+        setIsPaused(Boolean(state.paused));
       });
 
       playerRef.current = player;
@@ -103,16 +112,40 @@ export function useSpotifyPlayer() {
     await sleep(300);
     try {
       await playerRef.current?.resume();
+      setIsPaused(false);
     } catch {
       // Already playing is fine.
     }
   }, [unlockAudio, waitForDevice]);
 
+  const pause = useCallback(async () => {
+    await playerRef.current?.pause();
+    setIsPaused(true);
+  }, []);
+
+  const resume = useCallback(async () => {
+    await unlockAudio();
+    await playerRef.current?.resume();
+    setIsPaused(false);
+  }, [unlockAudio]);
+
+  const togglePause = useCallback(async () => {
+    if (isPaused) {
+      await resume();
+      return;
+    }
+    await pause();
+  }, [isPaused, pause, resume]);
+
   return {
     deviceId,
     isReady,
+    isPaused,
     playerError,
     play,
+    pause,
+    resume,
+    togglePause,
     unlockAudio,
   };
 }

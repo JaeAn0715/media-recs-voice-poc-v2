@@ -35,7 +35,7 @@ export function VoicePlayer() {
     clearError: clearSpeechError,
   } = useSpeechRecognition();
 
-  const { isReady, playerError, play, unlockAudio } = useSpotifyPlayer();
+  const { isReady, isPaused, playerError, play, togglePause, unlockAudio } = useSpotifyPlayer();
 
   const [status, setStatus] = useState<Status>('idle');
   const [logs, setLogs] = useState<PipelineLog[]>([]);
@@ -283,7 +283,7 @@ export function VoicePlayer() {
         </div>
       )}
 
-      {currentTrack && status === 'playing' && (
+      {currentTrack && (
         <div className="now-playing">
           {currentTrack.album.images[0] && (
             <img
@@ -299,6 +299,14 @@ export function VoicePlayer() {
             </p>
             <p className="track-id">Spotify ID: {currentTrack.id}</p>
           </div>
+          <button
+            type="button"
+            className="playback-toggle"
+            onClick={() => void togglePause()}
+            aria-label={isPaused ? '재생' : '멈춤'}
+          >
+            {isPaused ? '재생' : '멈춤'}
+          </button>
         </div>
       )}
 
