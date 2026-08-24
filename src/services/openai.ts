@@ -1,5 +1,6 @@
 import type { ExtractedSong } from '../types';
 import { getOpenAIApiKey } from './credentials';
+import { fetchWithTimeout, readApiError } from './http';
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 
@@ -9,36 +10,39 @@ export async function extractSongFromUtterance(utterance: string): Promise<Extra
     throw new Error('OpenAI API Key가 없습니다. 화면에 입력한 뒤 저장해 주세요.');
   }
 
-  const response = await fetch(OPENAI_API_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o-mini',
-      temperature: 0,
-      response_format: { type: 'json_object' },
-      messages: [
-        {
-          role: 'system',
-          content: `사용자의 음성 명령에서 재생할 노래 정보를 추출하세요.
+  const response = await fetchWithTimeout(
+    OPENAI_API_URL,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        temperature: 0,
+        response_format: { type: 'json_object' },
+        messages: [
+          {
+            role: 'system',
+            content: `사용자의 음성 명령에서 재생할 노래 정보를 추출하세요.
 예: "보헤미안 랩소디 틀어줘" → {"title": "Bohemian Rhapsody", "artist": "Queen"}
 예: "아이유 좋은 날 재생해줘" → {"title": "좋은 날", "artist": "아이유"}
 노래 제목이 없으면 {"title": "", "artist": ""}를 반환하세요.
 반드시 JSON 형식으로만 응답하세요: {"title": "...", "artist": "..."}`,
-        },
-        {
-          role: 'user',
-          content: utterance,
-        },
-      ],
-    }),
-  });
+          },
+          {
+            role: 'user',
+            content: utterance,
+          },
+        ],
+      }),
+    },
+    'ChatGPT',
+  );
 
   if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`OpenAI API 오류: ${error}`);
+    throw new Error(`OpenAI API 오류: ${await readApiError(response)}`);
   }
 
   const data = await response.json();

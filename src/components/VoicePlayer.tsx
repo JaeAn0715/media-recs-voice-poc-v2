@@ -79,10 +79,8 @@ export function VoicePlayer() {
       setLogs([]);
       setCurrentTrack(null);
 
-      const voiceLog = appendLog('음성', `"${command}"가 입력되었습니다.`, 'done');
+      appendLog('음성', `"${command}"가 입력되었습니다.`, 'done');
       const gptLog = appendLog('ChatGPT', '발화에서 검색할 노래 제목을 필터링하는 중...');
-      const searchLog = appendLog('Spotify Open API', '제목이 정해지면 검색을 시작합니다.');
-      const playLog = appendLog('재생', '검색이 끝나면 재생을 시작합니다.');
 
       try {
         const extracted = await extractSongFromUtterance(command);
@@ -94,8 +92,11 @@ export function VoicePlayer() {
           `ChatGPT가 검색할 곡을 ${queryLabel}(으)로 필터링했습니다.`,
           'done',
         );
-        updateLog(searchLog, `Spotify Open API로 ${queryLabel} 검색 중...`, 'running');
 
+        const searchLog = appendLog(
+          'Spotify Open API',
+          `Spotify Open API로 ${queryLabel} 검색 중...`,
+        );
         const track = await searchTrack(extracted.title, extracted.artist);
         const artistName = track.artists.map((artist) => artist.name).join(', ');
         setCurrentTrack(track);
@@ -104,7 +105,8 @@ export function VoicePlayer() {
           `검색 결과: "${track.name}" — ${artistName} (id: ${track.id})`,
           'done',
         );
-        updateLog(playLog, `"${track.name}"을(를) 재생합니다.`, 'running');
+
+        const playLog = appendLog('재생', `"${track.name}"을(를) 재생합니다.`);
 
         await play(track.uri);
 
@@ -115,7 +117,6 @@ export function VoicePlayer() {
           playedAt: new Date().toISOString(),
         });
         updateLog(playLog, `"${track.name}" — ${artistName} 재생을 시작했습니다.`, 'done');
-        updateLog(voiceLog, `"${command}" 요청을 처리했습니다.`, 'done');
         setStatus('playing');
       } catch (err) {
         const message = err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.';

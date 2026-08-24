@@ -1,4 +1,5 @@
 import { getSpotifyClientId as readStoredClientId } from './credentials';
+import { fetchWithTimeout, readApiError } from './http';
 import { generateCodeChallenge, generateCodeVerifier } from './pkce';
 import type { SpotifyTrack } from '../types';
 
@@ -127,10 +128,10 @@ export async function handleAuthCallback(code: string, state: string | null): Pr
 export async function searchTrack(title: string, artist?: string): Promise<SpotifyTrack> {
   const token = getAccessToken();
   if (!token) {
-    throw new Error('Spotify에 로그인이 필요합니다.');
+    throw new Error('Spotify에 로그인이 필요합니다. 다시 로그인해 주세요.');
   }
 
-  const query = artist ? `track:${title} artist:${artist}` : title;
+  const query = [title, artist].filter(Boolean).join(' ');
   const params = new URLSearchParams({
     q: query,
     type: 'track',
@@ -138,13 +139,20 @@ export async function searchTrack(title: string, artist?: string): Promise<Spoti
     market: 'from_token',
   });
 
-  const response = await fetch(`${SPOTIFY_API_URL}/search?${params.toString()}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  const response = await fetchWithTimeout(
+    `${SPOTIFY_API_URL}/search?${params.toString()}`,
+    {
+      headers: { Authorization: `Bearer ${token}` },
+    },
+    'Spotify 검색',
+  );
+
+  if (response.status === 401) {
+    throw new Error('Spotify 로그인이 만료되었습니다. 다시 로그인해 주세요.');
+  }
 
   if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Spotify 검색 실패: ${error}`);
+    throw new Error(`Spotify 검색 실패: ${await readApiError(response)}`);
   }
 
   const data = await response.json();
@@ -169,7 +177,7 @@ export async function playTrack(trackUri: string, deviceId: string): Promise<voi
     throw new Error('Spotify에 로그인이 필요합니다.');
   }
 
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     `${SPOTIFY_API_URL}/me/player/play?device_id=${deviceId}`,
     {
       method: 'PUT',
@@ -179,11 +187,11 @@ export async function playTrack(trackUri: string, deviceId: string): Promise<voi
       },
       body: JSON.stringify({ uris: [trackUri] }),
     },
+    'Spotify 재생',
   );
 
   if (!response.ok && response.status !== 204) {
-    const error = await response.text();
-    throw new Error(`재생 실패: ${error}`);
+    throw new Error(`재생 실패: ${await readApiError(response)}`);
   }
 }
 
