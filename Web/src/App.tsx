@@ -80,7 +80,6 @@ function App() {
   useEffect(() => {
     if (!trackedArrival) return
     const selectedLineId = lineId
-    void refreshPosition(trackedArrival, selectedLineId)
 
     const refreshTimer = window.setInterval(() => {
       void refreshPosition(trackedArrival, selectedLineId, true)
@@ -129,6 +128,7 @@ function App() {
       if (requestId.current !== currentRequest) return
       setTrackedArrival(arrival)
       setSecondsUntilRefresh(20)
+      void refreshPosition(arrival, lineId)
     } catch (caught) {
       if (requestId.current !== currentRequest) return
       setError(

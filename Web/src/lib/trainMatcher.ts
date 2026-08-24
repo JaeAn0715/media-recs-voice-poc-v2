@@ -63,6 +63,7 @@ export const shortestPath = (line: Line, start: string, destination: string) => 
     const path = queue.shift()
     if (!path) break
     const current = path.at(-1)
+    if (!current) continue
     if (current === to) return path
 
     for (const next of graph.get(current) ?? []) {
