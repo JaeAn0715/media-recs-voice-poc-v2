@@ -27,7 +27,7 @@ export function useSpotifyPlayer() {
       const player = new window.Spotify.Player({
         name: 'Voice Music Player',
         getOAuthToken: (cb) => cb(getAccessToken() ?? ''),
-        volume: 0.8,
+        volume: 1,
       });
 
       player.addListener('ready', ({ device_id }: { device_id: string }) => {
@@ -87,15 +87,32 @@ export function useSpotifyPlayer() {
     return deviceIdRef.current;
   }, []);
 
+  const unlockAudio = useCallback(async () => {
+    try {
+      await playerRef.current?.activateElement?.();
+      await playerRef.current?.setVolume(1);
+    } catch {
+      // Click-to-unlock can fail before the SDK is ready; playback still retries later.
+    }
+  }, []);
+
   const play = useCallback(async (trackUri: string) => {
+    await unlockAudio();
     const readyDeviceId = await waitForDevice();
     await playTrack(trackUri, readyDeviceId);
-  }, [waitForDevice]);
+    await sleep(300);
+    try {
+      await playerRef.current?.resume();
+    } catch {
+      // Already playing is fine.
+    }
+  }, [unlockAudio, waitForDevice]);
 
   return {
     deviceId,
     isReady,
     playerError,
     play,
+    unlockAudio,
   };
 }

@@ -35,7 +35,7 @@ export function VoicePlayer() {
     clearError: clearSpeechError,
   } = useSpeechRecognition();
 
-  const { isReady, playerError, play } = useSpotifyPlayer();
+  const { isReady, playerError, play, unlockAudio } = useSpotifyPlayer();
 
   const [status, setStatus] = useState<Status>('idle');
   const [logs, setLogs] = useState<PipelineLog[]>([]);
@@ -122,6 +122,7 @@ export function VoicePlayer() {
         setPlayHistory(
           addPlayedSong({
             id: track.id,
+            uri: track.uri,
             title: track.name,
             artist: artistName,
             albumImage: track.album.images[0]?.url,
@@ -178,6 +179,7 @@ export function VoicePlayer() {
     setStatus('idle');
     setLogs([]);
     setCurrentTrack(null);
+    void unlockAudio();
     startListening();
   };
 
@@ -188,7 +190,33 @@ export function VoicePlayer() {
       return;
     }
     processedRef.current = command;
+    void unlockAudio();
     void processUtterance(command);
+  };
+
+  const playHistoryTrack = async (song: PlayedSong) => {
+    const uri = song.uri || (/^[A-Za-z0-9]{22}$/.test(song.id) ? `spotify:track:${song.id}` : '');
+    if (!uri) {
+      setError('이 항목에는 재생할 Spotify URI가 없습니다. 다시 검색해 주세요.');
+      return;
+    }
+    setError(null);
+    try {
+      await play(uri);
+      setStatus('playing');
+      setCurrentTrack({
+        id: song.id,
+        name: song.title,
+        artists: [{ name: song.artist }],
+        uri,
+        album: {
+          name: '',
+          images: song.albumImage ? [{ url: song.albumImage }] : [],
+        },
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '재생에 실패했습니다.');
+    }
   };
 
   const displayError = error || speechError || playerError;
@@ -309,16 +337,23 @@ export function VoicePlayer() {
           <ul>
             {playHistory.map((song) => (
               <li key={`${song.id}-${song.playedAt}`}>
-                {song.albumImage && (
-                  <img src={song.albumImage} alt="" className="history-art" />
-                )}
-                <div>
-                  <p className="history-title">{song.title}</p>
-                  <p className="history-artist">{song.artist}</p>
-                  <span className="timestamp">
-                    {new Date(song.playedAt).toLocaleString('ko-KR')}
-                  </span>
-                </div>
+                <button
+                  type="button"
+                  className="history-play-button"
+                  onClick={() => void playHistoryTrack(song)}
+                >
+                  {song.albumImage && (
+                    <img src={song.albumImage} alt="" className="history-art" />
+                  )}
+                  <div>
+                    <p className="history-title">{song.title}</p>
+                    <p className="history-artist">{song.artist}</p>
+                    <span className="timestamp">
+                      {new Date(song.playedAt).toLocaleString('ko-KR')}
+                    </span>
+                  </div>
+                  <span className="history-play-label">재생</span>
+                </button>
               </li>
             ))}
           </ul>

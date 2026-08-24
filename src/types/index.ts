@@ -15,6 +15,7 @@ export interface LastPlayedSong {
 
 export interface PlayedSong {
   id: string;
+  uri?: string;
   title: string;
   artist: string;
   playedAt: string;
@@ -55,6 +56,7 @@ export interface SpotifyPlayer {
   seek: (positionMs: number) => Promise<void>;
   previousTrack: () => Promise<void>;
   nextTrack: () => Promise<void>;
+  activateElement?: () => Promise<void>;
 }
 
 export interface SpotifyPlaybackState {

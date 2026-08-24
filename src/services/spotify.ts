@@ -171,14 +171,43 @@ export async function searchTrack(title: string, artist?: string): Promise<Spoti
   return playable;
 }
 
-export async function playTrack(trackUri: string, deviceId: string): Promise<void> {
+export async function transferPlayback(deviceId: string, play = false): Promise<void> {
   const token = getAccessToken();
   if (!token) {
     throw new Error('Spotify에 로그인이 필요합니다.');
   }
 
   const response = await fetchWithTimeout(
-    `${SPOTIFY_API_URL}/me/player/play?device_id=${deviceId}`,
+    `${SPOTIFY_API_URL}/me/player`,
+    {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        device_ids: [deviceId],
+        play,
+      }),
+    },
+    'Spotify 기기 전환',
+  );
+
+  if (!response.ok && response.status !== 204 && response.status !== 202) {
+    throw new Error(`재생 기기 전환 실패: ${await readApiError(response)}`);
+  }
+}
+
+export async function playTrack(trackUri: string, deviceId: string): Promise<void> {
+  const token = getAccessToken();
+  if (!token) {
+    throw new Error('Spotify에 로그인이 필요합니다.');
+  }
+
+  await transferPlayback(deviceId, false);
+
+  const response = await fetchWithTimeout(
+    `${SPOTIFY_API_URL}/me/player/play?device_id=${encodeURIComponent(deviceId)}`,
     {
       method: 'PUT',
       headers: {
@@ -190,7 +219,27 @@ export async function playTrack(trackUri: string, deviceId: string): Promise<voi
     'Spotify 재생',
   );
 
-  if (!response.ok && response.status !== 204) {
+  if (response.status === 404) {
+    await transferPlayback(deviceId, true);
+    const retry = await fetchWithTimeout(
+      `${SPOTIFY_API_URL}/me/player/play?device_id=${encodeURIComponent(deviceId)}`,
+      {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ uris: [trackUri] }),
+      },
+      'Spotify 재생',
+    );
+    if (!retry.ok && retry.status !== 204 && retry.status !== 202) {
+      throw new Error(`재생 실패: ${await readApiError(retry)}`);
+    }
+    return;
+  }
+
+  if (!response.ok && response.status !== 204 && response.status !== 202) {
     throw new Error(`재생 실패: ${await readApiError(response)}`);
   }
 }

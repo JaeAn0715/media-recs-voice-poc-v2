@@ -521,9 +521,33 @@ body {
 }
 
 .play-history li {
+  display: block;
+}
+
+.history-play-button {
   display: flex;
   gap: 0.8rem;
   align-items: center;
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.history-play-button:hover {
+  border-color: var(--accent);
+  background: var(--surface-hover);
+}
+
+.history-play-label {
+  margin-left: auto;
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 700;
 }
 
 .history-art {
