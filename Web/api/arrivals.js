@@ -4,15 +4,15 @@ import {
   parseStation,
 } from '../server/seoulApi.js'
 
-export async function GET(request) {
+export default async function handler(req, res) {
   try {
-    const station = parseStation(new URL(request.url).searchParams.get('station'))
+    const station = parseStation(req.query?.station)
     const data = await fetchSeoulApi(
       `realtimeStationArrival/0/30/${encodeURIComponent(station)}`,
     )
-    return Response.json({ arrivals: data.realtimeArrivalList ?? [] })
+    res.status(200).json({ arrivals: data.realtimeArrivalList ?? [] })
   } catch (error) {
     const { status, message } = errorPayload(error)
-    return Response.json({ message }, { status })
+    res.status(status).json({ message })
   }
 }
