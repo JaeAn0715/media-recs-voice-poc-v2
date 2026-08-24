@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
+import { useLocale } from '../context/LocaleContext';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 import { useSpotifyPlayer } from '../hooks/useSpotifyPlayer';
 import { extractSongFromUtterance } from '../services/openai';
@@ -24,6 +25,7 @@ interface PipelineLog {
 }
 
 export function VoicePlayer() {
+  const { locale, t } = useLocale();
   const {
     isSupported,
     isListening,
@@ -34,7 +36,7 @@ export function VoicePlayer() {
     stopListening,
     clearTranscript,
     clearError: clearSpeechError,
-  } = useSpeechRecognition();
+  } = useSpeechRecognition(locale);
 
   const { isReady, isPaused, playerError, play, togglePause, unlockAudio } = useSpotifyPlayer();
 
@@ -86,8 +88,8 @@ export function VoicePlayer() {
 
       const stillCurrent = () => runIdRef.current === runId;
 
-      appendLog('음성', `"${command}"가 입력되었습니다.`, 'done');
-      const gptLog = appendLog('ChatGPT', '발화에서 검색할 노래 제목을 필터링하는 중...');
+      appendLog(t('logVoice'), t('utteranceReceived', { command }), 'done');
+      const gptLog = appendLog('ChatGPT', t('filteringTitle'));
 
       try {
         const extracted = await extractSongFromUtterance(command);
@@ -97,13 +99,13 @@ export function VoicePlayer() {
           : `"${extracted.title}"`;
         updateLog(
           gptLog,
-          `ChatGPT가 검색할 곡을 ${queryLabel}(으)로 필터링했습니다.`,
+          t('filteredTitle', { query: queryLabel }),
           'done',
         );
 
         const searchLog = appendLog(
           'Spotify Open API',
-          `Spotify Open API로 ${queryLabel} 검색 중...`,
+          t('searchingSpotify', { query: queryLabel }),
         );
         const track = await searchTrack(extracted.title, extracted.artist);
         if (!stillCurrent()) return;
@@ -111,11 +113,11 @@ export function VoicePlayer() {
         setCurrentTrack(track);
         updateLog(
           searchLog,
-          `검색 결과: "${track.name}" — ${artistName} (id: ${track.id})`,
+          t('searchResult', { name: track.name, artist: artistName, id: track.id }),
           'done',
         );
 
-        const playLog = appendLog('재생', `"${track.name}"을(를) 재생합니다.`);
+        const playLog = appendLog(t('logPlay'), t('startingPlay', { name: track.name }));
 
         await play(track.uri);
         if (!stillCurrent()) return;
@@ -129,18 +131,18 @@ export function VoicePlayer() {
             albumImage: track.album.images[0]?.url,
           }),
         );
-        updateLog(playLog, `"${track.name}" — ${artistName} 재생을 시작했습니다.`, 'done');
+        updateLog(playLog, t('startedPlay', { name: track.name, artist: artistName }), 'done');
         setStatus('playing');
       } catch (err) {
         if (!stillCurrent()) return;
-        const message = err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.';
+        const message = err instanceof Error ? err.message : t('unknownError');
         setStatus('error');
         setError(message);
         setLogs((current) => {
           const running = [...current].reverse().find((entry) => entry.state === 'running');
           if (!running) {
             logIdRef.current += 1;
-            return [...current, { id: logIdRef.current, step: '오류', text: message, state: 'error' }];
+            return [...current, { id: logIdRef.current, step: t('logError'), text: message, state: 'error' }];
           }
           return current.map((entry) =>
             entry.id === running.id ? { ...entry, text: message, state: 'error' as const } : entry,
@@ -148,7 +150,7 @@ export function VoicePlayer() {
         });
       }
     },
-    [appendLog, play, updateLog],
+    [appendLog, play, t, updateLog],
   );
 
   useEffect(() => {
@@ -234,7 +236,7 @@ export function VoicePlayer() {
   const playHistoryTrack = async (song: PlayedSong) => {
     const uri = song.uri || (/^[A-Za-z0-9]{22}$/.test(song.id) ? `spotify:track:${song.id}` : '');
     if (!uri) {
-      setError('이 항목에는 재생할 Spotify URI가 없습니다. 다시 검색해 주세요.');
+      setError(t('missingUri'));
       return;
     }
     try {
@@ -246,7 +248,7 @@ export function VoicePlayer() {
         albumImage: song.albumImage,
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : '재생에 실패했습니다.');
+      setError(err instanceof Error ? err.message : t('playFailed'));
     }
   };
 
@@ -263,7 +265,7 @@ export function VoicePlayer() {
         { record: true },
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : '재생에 실패했습니다.');
+      setError(err instanceof Error ? err.message : t('playFailed'));
     }
   };
 
@@ -272,8 +274,8 @@ export function VoicePlayer() {
   return (
     <div className="voice-player">
       <header className="header">
-        <h1>Voice Music Player</h1>
-        <p className="subtitle">음성으로 노래를 요청하면 Spotify에서 재생합니다</p>
+        <h1>{t('appTitle')}</h1>
+        <p className="subtitle">{t('subtitle')}</p>
       </header>
 
       <div className="mic-section">
@@ -281,33 +283,33 @@ export function VoicePlayer() {
           className={`mic-button ${isListening ? 'listening' : ''}`}
           onClick={handleMicClick}
           disabled={!isSupported || status === 'processing'}
-          aria-label={isListening ? '음성 인식 중지' : '음성 인식 시작'}
+          aria-label={isListening ? t('micStop') : t('micStart')}
         >
           <span className="mic-icon">{isListening ? '⏹' : '🎤'}</span>
         </button>
         <p className="mic-hint">
           {!isSupported
-            ? '이 브라우저는 음성 인식을 지원하지 않습니다. 아래 텍스트로 요청하세요.'
+            ? t('micUnsupported')
             : isListening
-              ? interimTranscript || '듣고 있습니다... (예: "아이유 좋은 날 틀어줘")'
+              ? interimTranscript || t('listening')
               : status === 'processing'
-                ? '요청을 처리하는 중입니다...'
-                : '마이크를 눌러 노래를 요청하세요'}
+                ? t('processing')
+                : t('tapMic')}
         </p>
       </div>
 
       <form className="text-command" onSubmit={handleTextSubmit}>
-        <label htmlFor="text-command">텍스트로도 같은 흐름을 실행할 수 있습니다</label>
+        <label htmlFor="text-command">{t('textCommandLabel')}</label>
         <div className="text-command-row">
           <input
             id="text-command"
             value={textCommand}
             onChange={(event) => setTextCommand(event.target.value)}
-            placeholder='예: 아이유 좋은 날 재생해줘'
+            placeholder={t('textPlaceholder')}
             disabled={status === 'processing'}
           />
           <button type="submit" disabled={status === 'processing' || !textCommand.trim()}>
-            실행
+            {t('run')}
           </button>
         </div>
       </form>
@@ -351,15 +353,15 @@ export function VoicePlayer() {
             type="button"
             className="playback-toggle"
             onClick={() => void togglePause()}
-            aria-label={isPaused ? '재생' : '멈춤'}
+            aria-label={isPaused ? t('play') : t('pause')}
           >
-            {isPaused ? '재생' : '멈춤'}
+            {isPaused ? t('play') : t('pause')}
           </button>
         </div>
       )}
 
       <details className="credentials-panel">
-        <summary>API 키 설정</summary>
+        <summary>{t('apiKeys')}</summary>
         <CredentialsForm
           clientId={clientId}
           openAIApiKey={openAIApiKey}
@@ -376,19 +378,19 @@ export function VoicePlayer() {
               setError(null);
             } catch (err) {
               setCredentialsSaved(false);
-              setError(err instanceof Error ? err.message : '키 저장에 실패했습니다.');
+              setError(err instanceof Error ? err.message : t('saveKeysFailed'));
             }
           }}
         >
-          브라우저에 키 저장
+          {t('saveKeys')}
         </button>
-        {credentialsSaved && <p className="credentials-saved">이 브라우저에 저장했습니다.</p>}
+        {credentialsSaved && <p className="credentials-saved">{t('keysSaved')}</p>}
       </details>
 
       <section className="play-history">
-        <span className="label">재생한 노래</span>
+        <span className="label">{t('playedSongs')}</span>
         {playHistory.length === 0 ? (
-          <p className="play-history-empty">아직 재생한 노래가 없습니다.</p>
+          <p className="play-history-empty">{t('noPlayedSongs')}</p>
         ) : (
           <ul>
             {playHistory.map((song) => (
@@ -405,10 +407,10 @@ export function VoicePlayer() {
                     <p className="history-title">{song.title}</p>
                     <p className="history-artist">{song.artist}</p>
                     <span className="timestamp">
-                      {new Date(song.playedAt).toLocaleString('ko-KR')}
+                      {new Date(song.playedAt).toLocaleString(locale === 'en' ? 'en-US' : 'ko-KR')}
                     </span>
                   </div>
-                  <span className="history-play-label">재생</span>
+                  <span className="history-play-label">{t('play')}</span>
                 </button>
               </li>
             ))}
@@ -417,7 +419,7 @@ export function VoicePlayer() {
       </section>
 
       {!isReady && (
-        <p className="player-ready-hint">Spotify 플레이어 연결 중... 검색은 바로 진행됩니다.</p>
+        <p className="player-ready-hint">{t('playerConnecting')}</p>
       )}
 
       <RecommendationPanel playHistory={playHistory} onPlayTrack={playRecommendedTrack} />

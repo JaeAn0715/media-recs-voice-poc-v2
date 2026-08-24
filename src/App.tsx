@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
+import { LanguageToggle } from './components/LanguageToggle';
 import { VoicePlayer } from './components/VoicePlayer';
 import { AuthCallback } from './components/AuthCallback';
 import { CredentialsForm } from './components/CredentialsForm';
+import { LocaleProvider, useLocale } from './context/LocaleContext';
 import {
   getOpenAIApiKey,
   getSpotifyClientId,
@@ -10,7 +12,8 @@ import {
 import { getAccessToken, getRedirectUri, initiateLogin } from './services/spotify';
 import './App.css';
 
-function App() {
+function AppShell() {
+  const { t } = useLocale();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
   const [clientId, setClientId] = useState(getSpotifyClientId);
@@ -50,7 +53,7 @@ function App() {
       await initiateLogin();
     } catch (error) {
       setLoginError(
-        error instanceof Error ? error.message : 'Spotify 로그인을 시작하지 못했습니다.',
+        error instanceof Error ? error.message : t('loginFailed'),
       );
       setIsLoggingIn(false);
     }
@@ -60,12 +63,12 @@ function App() {
     return (
       <div className="app login">
         <div className="login-card">
-          <h1>Voice Music Player</h1>
-          <p>음성으로 Spotify 노래를 재생하세요</p>
+          <h1>{t('appTitle')}</h1>
+          <p>{t('loginSubtitle')}</p>
           <ul className="feature-list">
-            <li>🎤 음성으로 노래 요청</li>
-            <li>🤖 ChatGPT가 제목 추출</li>
-            <li>🎵 Spotify에서 재생</li>
+            <li>{t('featureVoice')}</li>
+            <li>{t('featureGpt')}</li>
+            <li>{t('featurePlay')}</li>
           </ul>
           <CredentialsForm
             clientId={clientId}
@@ -76,10 +79,7 @@ function App() {
           <div className="redirect-uri-box">
             <span className="label">Spotify Redirect URI</span>
             <code>{redirectUri}</code>
-            <p>
-              Spotify Dashboard → 앱 → Redirect URIs에 위 주소를 한 글자도 다르게 말고
-              그대로 추가하세요. `localhost`는 사용할 수 없습니다.
-            </p>
+            <p>{t('redirectUriHint')}</p>
             <button
               type="button"
               className="copy-uri-button"
@@ -88,14 +88,14 @@ function App() {
                 setCopied(true);
               }}
             >
-              {copied ? '복사됨' : 'URI 복사'}
+              {copied ? t('copied') : t('copyUri')}
             </button>
             <a
               href="https://developer.spotify.com/dashboard"
               target="_blank"
               rel="noreferrer"
             >
-              Dashboard 열기
+              {t('openDashboard')}
             </a>
           </div>
           {loginError && <p className="login-error">{loginError}</p>}
@@ -104,9 +104,9 @@ function App() {
             onClick={handleLogin}
             disabled={isLoggingIn}
           >
-            {isLoggingIn ? 'Spotify로 이동 중...' : 'Spotify로 로그인'}
+            {isLoggingIn ? t('loggingIn') : t('loginButton')}
           </button>
-          <p className="premium-note">* Spotify Premium 계정이 필요합니다</p>
+          <p className="premium-note">{t('premiumNote')}</p>
         </div>
       </div>
     );
@@ -116,6 +116,15 @@ function App() {
     <div className="app">
       <VoicePlayer />
     </div>
+  );
+}
+
+function App() {
+  return (
+    <LocaleProvider>
+      <LanguageToggle />
+      <AppShell />
+    </LocaleProvider>
   );
 }
 

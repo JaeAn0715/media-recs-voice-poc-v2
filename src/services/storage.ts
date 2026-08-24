@@ -84,3 +84,38 @@ export function saveRecommendationSet(set: RecommendationSet): RecommendationSet
   localStorage.setItem(RECOMMENDATION_SETS_KEY, JSON.stringify(sets));
   return sets;
 }
+
+function songKey(song: PlayedSong): string {
+  if (song.id && /^[A-Za-z0-9]{22}$/.test(song.id)) {
+    return `id:${song.id}`;
+  }
+  return `name:${song.title.trim().toLowerCase()}::${song.artist.trim().toLowerCase()}`;
+}
+
+export function getMostPlayedSong(played: PlayedSong[] = getPlayedSongs()): PlayedSong | null {
+  if (played.length === 0) {
+    return null;
+  }
+
+  const counts = new Map<string, { song: PlayedSong; count: number }>();
+  for (const song of played) {
+    const key = songKey(song);
+    const existing = counts.get(key);
+    if (existing) {
+      existing.count += 1;
+      if (!existing.song.albumImage && song.albumImage) {
+        existing.song = song;
+      }
+    } else {
+      counts.set(key, { song, count: 1 });
+    }
+  }
+
+  let best: { song: PlayedSong; count: number } | null = null;
+  for (const entry of counts.values()) {
+    if (!best || entry.count > best.count) {
+      best = entry;
+    }
+  }
+  return best?.song ?? played[0];
+}

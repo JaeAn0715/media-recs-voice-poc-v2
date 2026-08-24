@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useLocale } from '../context/LocaleContext';
+import { similarSongsHeading } from '../i18n';
 import { createRecommendationSet } from '../services/recommend';
 import { getRecommendationSets } from '../services/storage';
 import type { PlayedSong, RecommendationSet, RecommendedTrack } from '../types';
@@ -10,16 +12,18 @@ interface RecommendationPanelProps {
   onPlayTrack: (track: RecommendedTrack) => void | Promise<void>;
 }
 
-function formatTime(iso: string) {
-  return new Date(iso).toLocaleString('ko-KR');
+function formatTime(iso: string, locale: string) {
+  return new Date(iso).toLocaleString(locale === 'en' ? 'en-US' : 'ko-KR');
 }
 
 function TrackList({
   tracks,
   onPlayTrack,
+  playLabel,
 }: {
   tracks: RecommendedTrack[];
   onPlayTrack: (track: RecommendedTrack) => void | Promise<void>;
+  playLabel: string;
 }) {
   return (
     <ol className="recommend-track-list">
@@ -36,14 +40,14 @@ function TrackList({
             {track.albumImage && (
               <img src={track.albumImage} alt="" className="history-art" />
             )}
-            <div>
+            <div className="recommend-track-copy">
               <p className="history-title">
                 {index + 1}. {track.title}
               </p>
               <p className="history-artist">{track.artist}</p>
               {track.reason && <p className="recommend-reason">{track.reason}</p>}
             </div>
-            <span className="history-play-label">재생</span>
+            <span className="history-play-label">{playLabel}</span>
           </a>
         </li>
       ))}
@@ -51,7 +55,13 @@ function TrackList({
   );
 }
 
+function setHeading(set: RecommendationSet, locale: 'ko' | 'en', fallback: string) {
+  const seedTitle = set.basedOn[0]?.title;
+  return seedTitle ? similarSongsHeading(seedTitle, locale) : fallback;
+}
+
 export function RecommendationPanel({ playHistory, onPlayTrack }: RecommendationPanelProps) {
+  const { locale, t } = useLocale();
   const [sets, setSets] = useState<RecommendationSet[]>(() => getRecommendationSets());
   const [view, setView] = useState<PanelView>('latest');
   const [isLoading, setIsLoading] = useState(false);
@@ -67,13 +77,13 @@ export function RecommendationPanel({ playHistory, onPlayTrack }: Recommendation
     setError(null);
     setIsLoading(true);
     setView('latest');
-    setProgress('추천을 준비하는 중...');
+    setProgress(t('preparingRecommend'));
     try {
       const created = await createRecommendationSet(playHistory, setProgress);
       setSets(getRecommendationSets());
-      setProgress(`Spotify에서 재생 가능한 ${created.tracks.length}곡을 찾았습니다.`);
+      setProgress(t('foundPlayable', { count: created.tracks.length }));
     } catch (err) {
-      setError(err instanceof Error ? err.message : '추천에 실패했습니다.');
+      setError(err instanceof Error ? err.message : t('recommendFailed'));
       setProgress(null);
     } finally {
       setIsLoading(false);
@@ -89,7 +99,7 @@ export function RecommendationPanel({ playHistory, onPlayTrack }: Recommendation
           onClick={() => void handleRecommend()}
           disabled={isLoading}
         >
-          {isLoading ? '추천 중...' : 'LLM으로 추천받기'}
+          {isLoading ? t('recommending') : t('recommendButton')}
         </button>
         <button
           type="button"
@@ -100,7 +110,7 @@ export function RecommendationPanel({ playHistory, onPlayTrack }: Recommendation
             setError(null);
           }}
         >
-          최근 추천목록
+          {t('recentRecommendations')}
         </button>
       </div>
 
@@ -115,35 +125,36 @@ export function RecommendationPanel({ playHistory, onPlayTrack }: Recommendation
 
       {view === 'latest' && !isLoading && latest && (
         <div className="recommend-set">
-          <span className="label">이번 추천</span>
+          <h2 className="recommend-heading">
+            {setHeading(latest, locale, t('thisRecommendation'))}
+          </h2>
           <p className="recommend-meta">
-            {formatTime(latest.createdAt)} · {latest.tracks.length}곡
+            {formatTime(latest.createdAt, locale)} · {t('trackCount', { count: latest.tracks.length })}
           </p>
-          <TrackList tracks={latest.tracks} onPlayTrack={onPlayTrack} />
+          <TrackList tracks={latest.tracks} onPlayTrack={onPlayTrack} playLabel={t('play')} />
         </div>
       )}
 
       {view === 'latest' && !isLoading && !latest && !error && (
-        <p className="play-history-empty">
-          재생한 노래를 바탕으로 좋아할 만한 곡 10개를 추천받습니다.
-        </p>
+        <p className="play-history-empty">{t('recommendEmptyHint')}</p>
       )}
 
       {view === 'history' && (
         <div className="recommend-history">
-          <span className="label">최근 추천목록</span>
+          <span className="label">{t('recentRecommendations')}</span>
           {sets.length === 0 ? (
-            <p className="play-history-empty">아직 저장된 추천 기록이 없습니다.</p>
+            <p className="play-history-empty">{t('noSavedRecommendations')}</p>
           ) : (
             sets.map((set) => (
               <article key={set.id} className="recommend-set">
+                <h2 className="recommend-heading">
+                  {setHeading(set, locale, t('thisRecommendation'))}
+                </h2>
                 <p className="recommend-meta">
-                  {formatTime(set.createdAt)} · {set.tracks.length}곡
-                  {set.basedOn.length > 0
-                    ? ` · ${set.basedOn[0].title} 등 ${set.basedOn.length}곡 기반`
-                    : ''}
+                  {formatTime(set.createdAt, locale)} · {t('trackCount', { count: set.tracks.length })}
+                  {set.basedOn[0]?.title ? ` · ${t('basedOnSong', { title: set.basedOn[0].title })}` : ''}
                 </p>
-                <TrackList tracks={set.tracks} onPlayTrack={onPlayTrack} />
+                <TrackList tracks={set.tracks} onPlayTrack={onPlayTrack} playLabel={t('play')} />
               </article>
             ))
           )}

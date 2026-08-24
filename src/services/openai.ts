@@ -1,3 +1,4 @@
+import { getStoredLocale, t } from '../i18n';
 import type { ExtractedSong } from '../types';
 import { getOpenAIApiKey } from './credentials';
 import { fetchWithTimeout, readApiError } from './http';
@@ -7,7 +8,7 @@ const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 export async function extractSongFromUtterance(utterance: string): Promise<ExtractedSong> {
   const apiKey = getOpenAIApiKey();
   if (!apiKey) {
-    throw new Error('OpenAI API Key가 없습니다. 화면에 입력한 뒤 저장해 주세요.');
+    throw new Error(t('noOpenaiKey'));
   }
 
   const response = await fetchWithTimeout(
@@ -42,18 +43,18 @@ export async function extractSongFromUtterance(utterance: string): Promise<Extra
   );
 
   if (!response.ok) {
-    throw new Error(`OpenAI API 오류: ${await readApiError(response)}`);
+    throw new Error(t('openaiError', { detail: await readApiError(response) }));
   }
 
   const data = await response.json();
   const content = data.choices?.[0]?.message?.content;
   if (!content) {
-    throw new Error('ChatGPT에서 노래 정보를 추출하지 못했습니다.');
+    throw new Error(t('extractFailed'));
   }
 
   const parsed = JSON.parse(content) as ExtractedSong;
   if (!parsed.title?.trim()) {
-    throw new Error('음성에서 노래 제목을 찾을 수 없습니다. 다시 말씀해 주세요.');
+    throw new Error(t('noTitleInSpeech'));
   }
 
   return {
@@ -62,21 +63,23 @@ export async function extractSongFromUtterance(utterance: string): Promise<Extra
   };
 }
 
-export async function recommendSongsFromHistory(
-  played: { title: string; artist: string }[],
+export async function recommendSimilarSongs(
+  seed: { title: string; artist: string },
+  alreadyPlayed: { title: string; artist: string }[] = [],
 ): Promise<{ title: string; artist: string; reason?: string }[]> {
   const apiKey = getOpenAIApiKey();
   if (!apiKey) {
-    throw new Error('OpenAI API Key가 없습니다. 화면에 입력한 뒤 저장해 주세요.');
-  }
-  if (played.length === 0) {
-    throw new Error('추천하려면 먼저 노래를 재생해 주세요.');
+    throw new Error(t('noOpenaiKey'));
   }
 
-  const history = played
+  const playedList = alreadyPlayed
     .slice(0, 30)
     .map((song, index) => `${index + 1}. ${song.title} - ${song.artist}`)
     .join('\n');
+  const reasonLanguage =
+    getStoredLocale() === 'en'
+      ? 'Write each reason in English, one short sentence.'
+      : '각 reason은 한국어 한 문장으로 쓰세요.';
 
   const response = await fetchWithTimeout(
     OPENAI_API_URL,
@@ -93,15 +96,21 @@ export async function recommendSongsFromHistory(
         messages: [
           {
             role: 'system',
-            content: `당신은 음악 추천 전문가입니다. 사용자가 지금까지 들은 곡을 보고 좋아할 만한 노래 12곡을 추천하세요.
-이미 들은 곡은 제외하세요. Spotify에서 검색 가능한, 실제로 발매된 곡만 추천하세요.
-제목과 아티스트는 Spotify 검색에 잘 맞는 공식 표기를 쓰세요.
-반드시 JSON만 응답하세요:
+            content: `You are a music recommendation expert. Recommend 12 real songs similar to ONE seed track.
+Exclude the seed track itself and any already-played songs. Only recommend commercially released songs that exist on Spotify.
+Use official titles and artist names that search well on Spotify.
+${reasonLanguage}
+Reply with JSON only:
 {"songs":[{"title":"...","artist":"...","reason":"..."}]}`,
           },
           {
             role: 'user',
-            content: `이 사람이 지금까지 재생한 노래입니다.\n${history}\n\n이 사람이 좋아할 만한 노래 12곡을 추천해 주세요. 검색이 잘 되는 실제 곡만 골라 주세요.`,
+            content: `Seed track: "${seed.title}" by ${seed.artist}
+
+Already played songs to exclude:
+${playedList || '(none)'}
+
+Recommend 12 similar songs to "${seed.title}".`,
           },
         ],
       }),
@@ -111,13 +120,13 @@ export async function recommendSongsFromHistory(
   );
 
   if (!response.ok) {
-    throw new Error(`OpenAI API 오류: ${await readApiError(response)}`);
+    throw new Error(t('openaiError', { detail: await readApiError(response) }));
   }
 
   const data = await response.json();
   const content = data.choices?.[0]?.message?.content;
   if (!content) {
-    throw new Error('ChatGPT에서 추천 결과를 받지 못했습니다.');
+    throw new Error(t('recommendLlmFailed'));
   }
 
   const parsed = JSON.parse(content) as {
@@ -132,7 +141,7 @@ export async function recommendSongsFromHistory(
     .filter((song) => song.title);
 
   if (songs.length === 0) {
-    throw new Error('추천할 노래를 만들지 못했습니다.');
+    throw new Error(t('recommendEmptyLlm'));
   }
 
   return songs.slice(0, 12);

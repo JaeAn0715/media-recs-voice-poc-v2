@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
+import { useLocale } from '../context/LocaleContext';
 import { handleAuthCallback } from '../services/spotify';
 
 export function AuthCallback() {
+  const { t } = useLocale();
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -11,12 +13,12 @@ export function AuthCallback() {
     const authError = params.get('error');
 
     if (authError) {
-      setError(`Spotify 인증 거부: ${authError}`);
+      setError(t('authDenied', { error: authError }));
       return;
     }
 
     if (!code) {
-      setError('인증 코드가 없습니다.');
+      setError(t('noAuthCode'));
       return;
     }
 
@@ -25,15 +27,15 @@ export function AuthCallback() {
         window.location.href = '/';
       })
       .catch((err) => {
-        setError(err instanceof Error ? err.message : '인증 처리 실패');
+        setError(err instanceof Error ? err.message : t('authFailed'));
       });
-  }, []);
+  }, [t]);
 
   if (error) {
     return (
       <div className="auth-callback">
         <p className="error-text">{error}</p>
-        <a href="/">돌아가기</a>
+        <a href="/">{t('goBack')}</a>
       </div>
     );
   }
@@ -41,7 +43,7 @@ export function AuthCallback() {
   return (
     <div className="auth-callback">
       <div className="spinner" />
-      <p>Spotify 로그인 처리 중...</p>
+      <p>{t('authProcessing')}</p>
     </div>
   );
 }

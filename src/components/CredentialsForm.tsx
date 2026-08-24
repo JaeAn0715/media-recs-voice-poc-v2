@@ -1,3 +1,5 @@
+import { useLocale } from '../context/LocaleContext';
+
 interface CredentialsFormProps {
   clientId: string;
   openAIApiKey: string;
@@ -11,6 +13,8 @@ export function CredentialsForm({
   onClientIdChange,
   onOpenAIApiKeyChange,
 }: CredentialsFormProps) {
+  const { t } = useLocale();
+
   return (
     <div className="credentials-form">
       <div className="client-id-field">
@@ -19,17 +23,14 @@ export function CredentialsForm({
           id="spotify-client-id"
           value={clientId}
           onChange={(event) => onClientIdChange(event.target.value)}
-          placeholder="Spotify Developer Dashboard의 Client ID"
+          placeholder={t('clientIdPlaceholder')}
           autoComplete="off"
           spellCheck={false}
         />
         <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noreferrer">
-          Client ID 확인하기
+          {t('clientIdLink')}
         </a>
-        <p className="credentials-hint">
-          Client Secret(Key)는 넣지 마세요. 브라우저 앱은 Spotify PKCE라 Client ID만
-          사용하고, 로그인 후 Access Token이 Open API 키 역할을 합니다.
-        </p>
+        <p className="credentials-hint">{t('clientSecretHint')}</p>
       </div>
       <div className="client-id-field">
         <label htmlFor="openai-api-key">OpenAI API Key</label>
@@ -43,10 +44,10 @@ export function CredentialsForm({
           spellCheck={false}
         />
         <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer">
-          API Key 확인하기
+          {t('openaiKeyLink')}
         </a>
       </div>
-      <p className="credentials-hint">입력한 키는 이 브라우저의 localStorage에만 저장됩니다.</p>
+      <p className="credentials-hint">{t('keysStoredHint')}</p>
     </div>
   );
 }
