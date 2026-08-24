@@ -1,4 +1,4 @@
-import { errorPayload, fetchSeoulApi, parseLine } from '../server/seoulApi.ts'
+import { errorPayload, fetchSeoulApi, parseLine } from '../server/seoulApi.js'
 
 export async function GET(request: Request) {
   try {

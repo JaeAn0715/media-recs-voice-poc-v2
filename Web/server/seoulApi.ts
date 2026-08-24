@@ -1,3 +1,5 @@
+/// <reference types="node" />
+
 export type SeoulApiResponse = {
   errorMessage?: { status?: number; code?: string; message?: string }
   realtimeArrivalList?: unknown[]
