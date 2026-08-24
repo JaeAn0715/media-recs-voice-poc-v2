@@ -1,7 +1,7 @@
 import { getSpotifyClientId as readStoredClientId } from './credentials';
 import { fetchWithTimeout, readApiError } from './http';
 import { generateCodeChallenge, generateCodeVerifier } from './pkce';
-import type { SpotifyTrack } from '../types';
+import type { RecommendedTrack, SpotifyTrack } from '../types';
 
 const SPOTIFY_AUTH_URL = 'https://accounts.spotify.com/authorize';
 const SPOTIFY_TOKEN_URL = 'https://accounts.spotify.com/api/token';
@@ -169,6 +169,61 @@ export async function searchTrack(title: string, artist?: string): Promise<Spoti
   }
 
   return playable;
+}
+
+export async function searchPlayableTrack(title: string, artist?: string): Promise<SpotifyTrack | null> {
+  try {
+    return await searchTrack(title, artist);
+  } catch {
+    return null;
+  }
+}
+
+export function getSpotifyTrackUrl(track: SpotifyTrack): string {
+  return track.external_urls?.spotify ?? `https://open.spotify.com/track/${track.id}`;
+}
+
+export function toRecommendedTrack(
+  track: SpotifyTrack,
+  reason?: string,
+): RecommendedTrack {
+  return {
+    title: track.name,
+    artist: track.artists.map((artist) => artist.name).join(', '),
+    id: track.id,
+    uri: track.uri,
+    spotifyUrl: getSpotifyTrackUrl(track),
+    albumImage: track.album.images[0]?.url,
+    reason,
+  };
+}
+
+export async function resolveRecommendedTracks(
+  suggestions: { title: string; artist: string; reason?: string }[],
+  excludeIds: Set<string>,
+  onProgress?: (done: number, total: number) => void,
+  limit = 10,
+): Promise<RecommendedTrack[]> {
+  const resolved: RecommendedTrack[] = [];
+  const seen = new Set(excludeIds);
+
+  for (let index = 0; index < suggestions.length && resolved.length < limit; index += 1) {
+    const suggestion = suggestions[index];
+    const withArtist = await searchPlayableTrack(suggestion.title, suggestion.artist || undefined);
+    const track =
+      withArtist ??
+      (suggestion.artist ? await searchPlayableTrack(suggestion.title) : null);
+    onProgress?.(index + 1, suggestions.length);
+
+    if (!track || seen.has(track.id)) {
+      continue;
+    }
+
+    seen.add(track.id);
+    resolved.push(toRecommendedTrack(track, suggestion.reason));
+  }
+
+  return resolved;
 }
 
 export async function transferPlayback(deviceId: string, play = false): Promise<void> {

@@ -9,8 +9,9 @@ import {
   saveBrowserCredentials,
 } from '../services/credentials';
 import { addPlayedSong, getPlayedSongs } from '../services/storage';
-import type { PlayedSong, SpotifyTrack } from '../types';
+import type { PlayedSong, RecommendedTrack, SpotifyTrack } from '../types';
 import { CredentialsForm } from './CredentialsForm';
+import { RecommendationPanel } from './RecommendationPanel';
 
 type Status = 'idle' | 'processing' | 'playing' | 'error';
 type LogState = 'running' | 'done' | 'error';
@@ -194,26 +195,73 @@ export function VoicePlayer() {
     void processUtterance(command);
   };
 
+  const startPlayback = async (
+    track: {
+      id: string;
+      title: string;
+      artist: string;
+      uri: string;
+      albumImage?: string;
+    },
+    options?: { record?: boolean },
+  ) => {
+    setError(null);
+    await play(track.uri);
+    setStatus('playing');
+    setCurrentTrack({
+      id: track.id,
+      name: track.title,
+      artists: [{ name: track.artist }],
+      uri: track.uri,
+      album: {
+        name: '',
+        images: track.albumImage ? [{ url: track.albumImage }] : [],
+      },
+    });
+    if (options?.record) {
+      setPlayHistory(
+        addPlayedSong({
+          id: track.id,
+          uri: track.uri,
+          title: track.title,
+          artist: track.artist,
+          albumImage: track.albumImage,
+        }),
+      );
+    }
+  };
+
   const playHistoryTrack = async (song: PlayedSong) => {
     const uri = song.uri || (/^[A-Za-z0-9]{22}$/.test(song.id) ? `spotify:track:${song.id}` : '');
     if (!uri) {
       setError('이 항목에는 재생할 Spotify URI가 없습니다. 다시 검색해 주세요.');
       return;
     }
-    setError(null);
     try {
-      await play(uri);
-      setStatus('playing');
-      setCurrentTrack({
+      await startPlayback({
         id: song.id,
-        name: song.title,
-        artists: [{ name: song.artist }],
+        title: song.title,
+        artist: song.artist,
         uri,
-        album: {
-          name: '',
-          images: song.albumImage ? [{ url: song.albumImage }] : [],
-        },
+        albumImage: song.albumImage,
       });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '재생에 실패했습니다.');
+    }
+  };
+
+  const playRecommendedTrack = async (track: RecommendedTrack) => {
+    try {
+      await startPlayback(
+        {
+          id: track.id,
+          title: track.title,
+          artist: track.artist,
+          uri: track.uri,
+          albumImage: track.albumImage,
+        },
+        { record: true },
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : '재생에 실패했습니다.');
     }
@@ -371,6 +419,8 @@ export function VoicePlayer() {
       {!isReady && (
         <p className="player-ready-hint">Spotify 플레이어 연결 중... 검색은 바로 진행됩니다.</p>
       )}
+
+      <RecommendationPanel playHistory={playHistory} onPlayTrack={playRecommendedTrack} />
     </div>
   );
 }

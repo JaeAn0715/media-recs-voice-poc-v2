@@ -1,8 +1,10 @@
-import type { LastPlayedSong, PlayedSong } from '../types';
+import type { LastPlayedSong, PlayedSong, RecommendationSet } from '../types';
 
 const LAST_PLAYED_KEY = 'lastPlayedSong';
 const PLAY_HISTORY_KEY = 'playedSongs';
+const RECOMMENDATION_SETS_KEY = 'recommendationSets';
 const MAX_HISTORY = 50;
+const MAX_RECOMMENDATION_SETS = 20;
 
 export function getLastPlayedSong(): LastPlayedSong | null {
   const history = getPlayedSongs();
@@ -64,4 +66,21 @@ export function addPlayedSong(song: Omit<PlayedSong, 'playedAt'> & { playedAt?: 
     }),
   );
   return history;
+}
+
+export function getRecommendationSets(): RecommendationSet[] {
+  try {
+    const raw = localStorage.getItem(RECOMMENDATION_SETS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as RecommendationSet[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveRecommendationSet(set: RecommendationSet): RecommendationSet[] {
+  const sets = [set, ...getRecommendationSets()].slice(0, MAX_RECOMMENDATION_SETS);
+  localStorage.setItem(RECOMMENDATION_SETS_KEY, JSON.stringify(sets));
+  return sets;
 }

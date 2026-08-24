@@ -5,6 +5,24 @@ export interface SpotifyTrack {
   uri: string;
   album: { name: string; images: { url: string }[] };
   is_playable?: boolean;
+  external_urls?: { spotify?: string };
+}
+
+export interface RecommendedTrack {
+  title: string;
+  artist: string;
+  id: string;
+  uri: string;
+  spotifyUrl: string;
+  albumImage?: string;
+  reason?: string;
+}
+
+export interface RecommendationSet {
+  id: string;
+  createdAt: string;
+  basedOn: { title: string; artist: string }[];
+  tracks: RecommendedTrack[];
 }
 
 export interface LastPlayedSong {
