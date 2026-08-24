@@ -1,6 +1,6 @@
 import { errorPayload, fetchSeoulApi, parseLine } from '../server/seoulApi.js'
 
-export async function GET(request: Request) {
+export async function GET(request) {
   try {
     const line = parseLine(new URL(request.url).searchParams.get('line'))
     const data = await fetchSeoulApi(

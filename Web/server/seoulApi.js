@@ -1,27 +1,16 @@
-/// <reference types="node" />
-
-export type SeoulApiResponse = {
-  errorMessage?: { status?: number; code?: string; message?: string }
-  realtimeArrivalList?: unknown[]
-  realtimePositionList?: unknown[]
-  RESULT?: { CODE?: string; MESSAGE?: string }
-}
-
-export class ApiError extends Error {
-  status: number
-
-  constructor(message: string, status = 502) {
-    super(message)
-    this.status = status
-  }
-}
-
 const subwayApiBase = 'http://swopenapi.seoul.go.kr/api/subway'
 const allowedLines = new Set(
   Array.from({ length: 9 }, (_, index) => `${index + 1}호선`),
 )
 
-export const fetchSeoulApi = async (endpoint: string) => {
+export class ApiError extends Error {
+  constructor(message, status = 502) {
+    super(message)
+    this.status = status
+  }
+}
+
+export const fetchSeoulApi = async (endpoint) => {
   const apiKey = process.env.SEOUL_SUBWAY_API_KEY
   if (!apiKey) {
     throw new ApiError(
@@ -38,7 +27,7 @@ export const fetchSeoulApi = async (endpoint: string) => {
     throw new ApiError(`서울시 API가 HTTP ${response.status}로 응답했습니다.`)
   }
 
-  const data = (await response.json()) as SeoulApiResponse
+  const data = await response.json()
   const apiError = data.errorMessage
   const resultError = data.RESULT
 
@@ -55,7 +44,7 @@ export const fetchSeoulApi = async (endpoint: string) => {
   return data
 }
 
-export const parseStation = (value: unknown) => {
+export const parseStation = (value) => {
   const station = String(value ?? '').trim()
   if (!station || station.length > 30) {
     throw new ApiError('올바른 승차역을 입력해 주세요.', 400)
@@ -63,7 +52,7 @@ export const parseStation = (value: unknown) => {
   return station
 }
 
-export const parseLine = (value: unknown) => {
+export const parseLine = (value) => {
   const line = String(value ?? '').trim()
   if (!allowedLines.has(line)) {
     throw new ApiError('지원하지 않는 호선입니다.', 400)
@@ -71,7 +60,7 @@ export const parseLine = (value: unknown) => {
   return line
 }
 
-export const errorPayload = (error: unknown) => {
+export const errorPayload = (error) => {
   const isTimeout =
     error instanceof Error &&
     (error.name === 'TimeoutError' || error.message.includes('aborted'))

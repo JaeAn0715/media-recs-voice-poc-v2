@@ -8,7 +8,7 @@ import {
   fetchSeoulApi,
   parseLine,
   parseStation,
-} from './seoulApi.ts'
+} from './seoulApi.js'
 
 const app = express()
 const port = Number(process.env.PORT ?? 8787)

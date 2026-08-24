@@ -1,6 +1,10 @@
-import { errorPayload, fetchSeoulApi, parseStation } from '../server/seoulApi.js'
+import {
+  errorPayload,
+  fetchSeoulApi,
+  parseStation,
+} from '../server/seoulApi.js'
 
-export async function GET(request: Request) {
+export async function GET(request) {
   try {
     const station = parseStation(new URL(request.url).searchParams.get('station'))
     const data = await fetchSeoulApi(
