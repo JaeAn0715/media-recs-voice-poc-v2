@@ -18,6 +18,7 @@ const TOKEN_KEY = 'spotify_access_token';
 const TOKEN_EXPIRY_KEY = 'spotify_token_expiry';
 const VERIFIER_KEY = 'spotify_code_verifier';
 const AUTH_STATE_KEY = 'spotify_auth_state';
+const REDIRECT_URI_KEY = 'spotify_redirect_uri';
 
 export function getConfiguredClientId(): string {
   return readStoredClientId();
@@ -34,15 +35,9 @@ function getClientId(): string {
 }
 
 export function getRedirectUri(): string {
-  if (import.meta.env.VITE_SPOTIFY_REDIRECT_URI) {
-    return import.meta.env.VITE_SPOTIFY_REDIRECT_URI;
-  }
-
-  // Spotify no longer allows `localhost`; use the loopback IP instead.
-  const origin = window.location.origin.replace(
-    'http://localhost',
-    'http://127.0.0.1',
-  );
+  const origin = window.location.origin
+    .replace(/\/$/, '')
+    .replace('http://localhost', 'http://127.0.0.1');
   return `${origin}/callback`;
 }
 
@@ -62,6 +57,7 @@ export function clearTokens(): void {
   sessionStorage.removeItem(TOKEN_EXPIRY_KEY);
   sessionStorage.removeItem(VERIFIER_KEY);
   sessionStorage.removeItem(AUTH_STATE_KEY);
+  sessionStorage.removeItem(REDIRECT_URI_KEY);
 }
 
 function storeToken(accessToken: string, expiresIn: number): void {
@@ -74,13 +70,15 @@ export async function initiateLogin(): Promise<void> {
   const verifier = generateCodeVerifier();
   const challenge = await generateCodeChallenge(verifier);
   const state = generateCodeVerifier();
+  const redirectUri = getRedirectUri();
   sessionStorage.setItem(VERIFIER_KEY, verifier);
   sessionStorage.setItem(AUTH_STATE_KEY, state);
+  sessionStorage.setItem(REDIRECT_URI_KEY, redirectUri);
 
   const params = new URLSearchParams({
     client_id: clientId,
     response_type: 'code',
-    redirect_uri: getRedirectUri(),
+    redirect_uri: redirectUri,
     scope: SCOPES,
     state,
     code_challenge_method: 'S256',
@@ -93,6 +91,7 @@ export async function initiateLogin(): Promise<void> {
 export async function handleAuthCallback(code: string, state: string | null): Promise<void> {
   const verifier = sessionStorage.getItem(VERIFIER_KEY);
   const expectedState = sessionStorage.getItem(AUTH_STATE_KEY);
+  const redirectUri = sessionStorage.getItem(REDIRECT_URI_KEY) || getRedirectUri();
   if (!verifier) {
     throw new Error('인증 세션이 만료되었습니다. 다시 로그인해 주세요.');
   }
@@ -108,7 +107,7 @@ export async function handleAuthCallback(code: string, state: string | null): Pr
       client_id: getClientId(),
       grant_type: 'authorization_code',
       code,
-      redirect_uri: getRedirectUri(),
+      redirect_uri: redirectUri,
       code_verifier: verifier,
     }),
   });
@@ -122,6 +121,7 @@ export async function handleAuthCallback(code: string, state: string | null): Pr
   storeToken(data.access_token, data.expires_in);
   sessionStorage.removeItem(VERIFIER_KEY);
   sessionStorage.removeItem(AUTH_STATE_KEY);
+  sessionStorage.removeItem(REDIRECT_URI_KEY);
 }
 
 export async function searchTrack(title: string, artist?: string): Promise<SpotifyTrack> {

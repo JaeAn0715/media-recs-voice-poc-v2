@@ -7,7 +7,7 @@ import {
   getSpotifyClientId,
   saveBrowserCredentials,
 } from './services/credentials';
-import { getAccessToken, initiateLogin } from './services/spotify';
+import { getAccessToken, getRedirectUri, initiateLogin } from './services/spotify';
 import './App.css';
 
 function App() {
@@ -17,6 +17,8 @@ function App() {
   const [openAIApiKey, setOpenAIApiKey] = useState(getOpenAIApiKey);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const redirectUri = getRedirectUri();
 
   const isCallback = window.location.pathname === '/callback';
 
@@ -71,6 +73,31 @@ function App() {
             onClientIdChange={setClientId}
             onOpenAIApiKeyChange={setOpenAIApiKey}
           />
+          <div className="redirect-uri-box">
+            <span className="label">Spotify Redirect URI</span>
+            <code>{redirectUri}</code>
+            <p>
+              Spotify Dashboard → 앱 → Redirect URIs에 위 주소를 한 글자도 다르게 말고
+              그대로 추가하세요. `localhost`는 사용할 수 없습니다.
+            </p>
+            <button
+              type="button"
+              className="copy-uri-button"
+              onClick={async () => {
+                await navigator.clipboard.writeText(redirectUri);
+                setCopied(true);
+              }}
+            >
+              {copied ? '복사됨' : 'URI 복사'}
+            </button>
+            <a
+              href="https://developer.spotify.com/dashboard"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Dashboard 열기
+            </a>
+          </div>
           {loginError && <p className="login-error">{loginError}</p>}
           <button
             className="login-button"
