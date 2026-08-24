@@ -10,6 +10,18 @@ import {
   type TrainPosition,
 } from './lib/trainMatcher'
 
+const DEFAULT_ROUTES: Record<string, [string, string]> = {
+  '1001': ['서울역', '종각'],
+  '1002': ['강남', '잠실'],
+  '1003': ['고속터미널', '종로3가'],
+  '1004': ['서울역', '사당'],
+  '1005': ['광화문', '여의도'],
+  '1006': ['공덕', '합정'],
+  '1007': ['건대입구', '고속터미널'],
+  '1008': ['잠실', '모란'],
+  '1009': ['여의도', '고속터미널'],
+}
+
 function App() {
   const [lineId, setLineId] = useState(LINES[1].id)
   const line = getLine(lineId) ?? LINES[1]
@@ -28,10 +40,13 @@ function App() {
 
   const selectLine = (newLineId: string) => {
     const newLine = getLine(newLineId) ?? LINES[0]
-    const newStations = getStations(newLine)
+    const defaultRoute = DEFAULT_ROUTES[newLineId] ?? [
+      newLine.routes[0][0],
+      newLine.routes[0][1],
+    ]
     setLineId(newLineId)
-    setBoarding(newStations[0])
-    setDestination(newStations[1])
+    setBoarding(defaultRoute[0])
+    setDestination(defaultRoute[1])
     setTrackedArrival(undefined)
     setPosition(undefined)
     setError('')
