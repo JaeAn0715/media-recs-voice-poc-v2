@@ -27,11 +27,21 @@ declare global {
   }
 }
 
+const ERROR_MESSAGES: Record<string, string> = {
+  'no-speech': '음성이 들리지 않았습니다. 다시 말씀해 주세요.',
+  'audio-capture': '마이크를 찾을 수 없습니다.',
+  'not-allowed': '마이크 권한이 거부되었습니다. 브라우저 설정에서 허용해 주세요.',
+  aborted: '음성 인식이 중단되었습니다.',
+  network: '음성 인식 네트워크 오류가 발생했습니다.',
+};
+
 export function useSpeechRecognition() {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
+  const [interimTranscript, setInterimTranscript] = useState('');
   const [error, setError] = useState<string | null>(null);
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
+  const gotResultRef = useRef(false);
 
   const isSupported =
     typeof window !== 'undefined' &&
@@ -45,21 +55,43 @@ export function useSpeechRecognition() {
     const recognition = new SpeechRecognitionAPI();
     recognition.lang = 'ko-KR';
     recognition.continuous = false;
-    recognition.interimResults = false;
+    recognition.interimResults = true;
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
-      const text = event.results[0]?.[0]?.transcript ?? '';
-      setTranscript(text);
-      setIsListening(false);
+      let finalText = '';
+      let interimText = '';
+      for (let i = 0; i < event.results.length; i += 1) {
+        const result = event.results[i];
+        if (result.isFinal) {
+          finalText += result[0]?.transcript ?? '';
+        } else {
+          interimText += result[0]?.transcript ?? '';
+        }
+      }
+      if (interimText) {
+        setInterimTranscript(interimText);
+      }
+      if (finalText.trim()) {
+        gotResultRef.current = true;
+        setTranscript(finalText.trim());
+        setInterimTranscript('');
+        setIsListening(false);
+      }
     };
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-      setError(`음성 인식 오류: ${event.error}`);
+      if (event.error !== 'aborted') {
+        setError(ERROR_MESSAGES[event.error] ?? `음성 인식 오류: ${event.error}`);
+      }
       setIsListening(false);
     };
 
     recognition.onend = () => {
       setIsListening(false);
+      setInterimTranscript('');
+      if (!gotResultRef.current) {
+        setError((current) => current ?? '음성을 인식하지 못했습니다. 다시 말하거나 텍스트로 입력해 주세요.');
+      }
     };
 
     recognitionRef.current = recognition;
@@ -73,8 +105,15 @@ export function useSpeechRecognition() {
     if (!recognitionRef.current) return;
     setError(null);
     setTranscript('');
+    setInterimTranscript('');
+    gotResultRef.current = false;
     setIsListening(true);
-    recognitionRef.current.start();
+    try {
+      recognitionRef.current.start();
+    } catch {
+      setError('음성 인식을 다시 시작할 수 없습니다. 잠시 후 다시 눌러 주세요.');
+      setIsListening(false);
+    }
   }, []);
 
   const stopListening = useCallback(() => {
@@ -86,10 +125,14 @@ export function useSpeechRecognition() {
     isSupported,
     isListening,
     transcript,
+    interimTranscript,
     error,
     startListening,
     stopListening,
-    clearTranscript: () => setTranscript(''),
+    clearTranscript: () => {
+      setTranscript('');
+      setInterimTranscript('');
+    },
     clearError: () => setError(null),
   };
 }

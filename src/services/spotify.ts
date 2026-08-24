@@ -135,6 +135,7 @@ export async function searchTrack(title: string, artist?: string): Promise<Spoti
     q: query,
     type: 'track',
     limit: '5',
+    market: 'from_token',
   });
 
   const response = await fetch(`${SPOTIFY_API_URL}/search?${params.toString()}`, {
@@ -193,10 +194,13 @@ export function loadSpotifySDK(): Promise<void> {
       return;
     }
 
-    const existing = document.getElementById('spotify-player-sdk');
-    if (existing) {
-      existing.addEventListener('load', () => resolve());
-      existing.addEventListener('error', () => reject(new Error('Spotify SDK 로드 실패')));
+    const previous = window.onSpotifyWebPlaybackSDKReady;
+    window.onSpotifyWebPlaybackSDKReady = () => {
+      previous?.();
+      resolve();
+    };
+
+    if (document.getElementById('spotify-player-sdk')) {
       return;
     }
 
@@ -204,7 +208,6 @@ export function loadSpotifySDK(): Promise<void> {
     script.id = 'spotify-player-sdk';
     script.src = 'https://sdk.scdn.co/spotify-player.js';
     script.async = true;
-    script.onload = () => resolve();
     script.onerror = () => reject(new Error('Spotify SDK 로드 실패'));
     document.body.appendChild(script);
   });

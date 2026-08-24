@@ -247,6 +247,116 @@ body {
   margin-top: 0.4rem;
 }
 
+.text-command {
+  margin-bottom: 1.2rem;
+}
+
+.text-command label {
+  display: block;
+  margin-bottom: 0.4rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.text-command-row {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.text-command-row input {
+  flex: 1;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+.text-command-row button {
+  padding: 0.75rem 1rem;
+  border: none;
+  border-radius: 10px;
+  background: var(--accent);
+  color: #000;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.text-command-row button:disabled,
+.text-command-row input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pipeline-log {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  max-height: 340px;
+  overflow-y: auto;
+  margin-bottom: 1rem;
+  padding: 0.2rem;
+}
+
+.pipeline-item {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.85rem 1rem;
+}
+
+.pipeline-item.running {
+  border-color: var(--accent);
+}
+
+.pipeline-item.done {
+  border-color: #2f6f45;
+}
+
+.pipeline-item.error {
+  border-color: var(--error);
+}
+
+.pipeline-step {
+  display: inline-block;
+  margin-bottom: 0.35rem;
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.pipeline-item.error .pipeline-step {
+  color: var(--error);
+}
+
+.pipeline-item p {
+  font-size: 0.95rem;
+}
+
+.mini-spinner {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.85rem;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.player-ready-hint {
+  margin-top: 0.6rem;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  text-align: center;
+}
+
 /* Mic */
 .mic-section {
   display: flex;

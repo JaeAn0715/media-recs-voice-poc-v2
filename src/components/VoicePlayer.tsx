@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 import { useSpotifyPlayer } from '../hooks/useSpotifyPlayer';
 import { extractSongFromUtterance } from '../services/openai';
@@ -13,12 +13,21 @@ import type { LastPlayedSong, SpotifyTrack } from '../types';
 import { CredentialsForm } from './CredentialsForm';
 
 type Status = 'idle' | 'processing' | 'playing' | 'error';
+type LogState = 'running' | 'done' | 'error';
+
+interface PipelineLog {
+  id: number;
+  step: string;
+  text: string;
+  state: LogState;
+}
 
 export function VoicePlayer() {
   const {
     isSupported,
     isListening,
     transcript,
+    interimTranscript,
     error: speechError,
     startListening,
     stopListening,
@@ -29,72 +38,145 @@ export function VoicePlayer() {
   const { isReady, playerError, play } = useSpotifyPlayer();
 
   const [status, setStatus] = useState<Status>('idle');
-  const [statusMessage, setStatusMessage] = useState('');
+  const [logs, setLogs] = useState<PipelineLog[]>([]);
+  const [textCommand, setTextCommand] = useState('');
   const [currentTrack, setCurrentTrack] = useState<SpotifyTrack | null>(null);
   const [lastPlayed, setLastPlayed] = useState<LastPlayedSong | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [clientId, setClientId] = useState(getSpotifyClientId);
   const [openAIApiKey, setOpenAIApiKey] = useState(getOpenAIApiKey);
   const [credentialsSaved, setCredentialsSaved] = useState(false);
+  const processedRef = useRef('');
+  const logIdRef = useRef(0);
+  const logEndRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setLastPlayed(getLastPlayedSong());
   }, []);
 
+  const appendLog = useCallback((step: string, text: string, state: LogState = 'running') => {
+    logIdRef.current += 1;
+    const id = logIdRef.current;
+    setLogs((current) => [...current, { id, step, text, state }]);
+    return id;
+  }, []);
+
+  const updateLog = useCallback((id: number, text: string, state: LogState) => {
+    setLogs((current) =>
+      current.map((entry) => (entry.id === id ? { ...entry, text, state } : entry)),
+    );
+  }, []);
+
   const processUtterance = useCallback(
     async (text: string) => {
+      const command = text.trim();
+      if (!command) {
+        return;
+      }
+
       setStatus('processing');
       setError(null);
-      setStatusMessage('ChatGPT가 노래 제목을 분석 중...');
+      setLogs([]);
+      setCurrentTrack(null);
+
+      const voiceLog = appendLog('음성', `"${command}"가 입력되었습니다.`, 'done');
+      const gptLog = appendLog('ChatGPT', '발화에서 검색할 노래 제목을 필터링하는 중...');
+      const searchLog = appendLog('Spotify Open API', '제목이 정해지면 검색을 시작합니다.');
+      const playLog = appendLog('재생', '검색이 끝나면 재생을 시작합니다.');
 
       try {
-        const extracted = await extractSongFromUtterance(text);
-        setStatusMessage(
-          `"${extracted.title}"${extracted.artist ? ` - ${extracted.artist}` : ''} 검색 중...`,
+        const extracted = await extractSongFromUtterance(command);
+        const queryLabel = extracted.artist
+          ? `"${extracted.title}" - ${extracted.artist}`
+          : `"${extracted.title}"`;
+        updateLog(
+          gptLog,
+          `ChatGPT가 검색할 곡을 ${queryLabel}(으)로 필터링했습니다.`,
+          'done',
         );
+        updateLog(searchLog, `Spotify Open API로 ${queryLabel} 검색 중...`, 'running');
 
         const track = await searchTrack(extracted.title, extracted.artist);
+        const artistName = track.artists.map((artist) => artist.name).join(', ');
         setCurrentTrack(track);
+        updateLog(
+          searchLog,
+          `검색 결과: "${track.name}" — ${artistName} (id: ${track.id})`,
+          'done',
+        );
+        updateLog(playLog, `"${track.name}"을(를) 재생합니다.`, 'running');
 
-        if (!isReady) {
-          throw new Error('Spotify 플레이어가 준비되지 않았습니다. 잠시 후 다시 시도해 주세요.');
-        }
-
-        setStatusMessage(`"${track.name}" 재생 중...`);
         await play(track.uri);
 
-        const artistName = track.artists.map((a) => a.name).join(', ');
         saveLastPlayedSong(track.name, artistName);
-        setLastPlayed({ title: track.name, artist: artistName, playedAt: new Date().toISOString() });
-
+        setLastPlayed({
+          title: track.name,
+          artist: artistName,
+          playedAt: new Date().toISOString(),
+        });
+        updateLog(playLog, `"${track.name}" — ${artistName} 재생을 시작했습니다.`, 'done');
+        updateLog(voiceLog, `"${command}" 요청을 처리했습니다.`, 'done');
         setStatus('playing');
-        setStatusMessage(`재생 중: ${track.name} - ${artistName}`);
       } catch (err) {
+        const message = err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.';
         setStatus('error');
-        setError(err instanceof Error ? err.message : '알 수 없는 오류가 발생했습니다.');
-        setStatusMessage('');
+        setError(message);
+        setLogs((current) => {
+          const running = [...current].reverse().find((entry) => entry.state === 'running');
+          if (!running) {
+            logIdRef.current += 1;
+            return [...current, { id: logIdRef.current, step: '오류', text: message, state: 'error' }];
+          }
+          return current.map((entry) =>
+            entry.id === running.id ? { ...entry, text: message, state: 'error' as const } : entry,
+          );
+        });
       }
     },
-    [isReady, play],
+    [appendLog, play, updateLog],
   );
 
   useEffect(() => {
-    if (transcript && !isListening) {
-      processUtterance(transcript);
+    logEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [logs]);
+
+  useEffect(() => {
+    if (!transcript || isListening) {
+      return;
     }
+    if (processedRef.current === transcript) {
+      return;
+    }
+    processedRef.current = transcript;
+    void processUtterance(transcript);
   }, [transcript, isListening, processUtterance]);
 
   const handleMicClick = () => {
     if (isListening) {
       stopListening();
-    } else {
-      clearTranscript();
-      clearSpeechError();
-      setError(null);
-      setStatus('idle');
-      setStatusMessage('');
-      startListening();
+      return;
     }
+    processedRef.current = '';
+    clearTranscript();
+    clearSpeechError();
+    setError(null);
+    setStatus('idle');
+    setLogs((current) =>
+      current.length
+        ? current
+        : [{ id: 0, step: '대기', text: '마이크가 열렸습니다. 노래를 말씀해 주세요.', state: 'running' }],
+    );
+    startListening();
+  };
+
+  const handleTextSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    const command = textCommand.trim();
+    if (!command || status === 'processing') {
+      return;
+    }
+    processedRef.current = command;
+    void processUtterance(command);
   };
 
   const displayError = error || speechError || playerError;
@@ -110,36 +192,49 @@ export function VoicePlayer() {
         <button
           className={`mic-button ${isListening ? 'listening' : ''}`}
           onClick={handleMicClick}
-          disabled={!isSupported || !isReady || status === 'processing'}
+          disabled={!isSupported || status === 'processing'}
           aria-label={isListening ? '음성 인식 중지' : '음성 인식 시작'}
         >
           <span className="mic-icon">{isListening ? '⏹' : '🎤'}</span>
         </button>
         <p className="mic-hint">
           {!isSupported
-            ? '이 브라우저는 음성 인식을 지원하지 않습니다.'
-            : !isReady
-              ? 'Spotify 플레이어 연결 중...'
-              : isListening
-                ? '말씀해 주세요... (예: "아이유 좋은 날 틀어줘")'
-                : status === 'processing'
-                  ? statusMessage
-                  : '마이크를 눌러 노래를 요청하세요'}
+            ? '이 브라우저는 음성 인식을 지원하지 않습니다. 아래 텍스트로 요청하세요.'
+            : isListening
+              ? interimTranscript || '듣고 있습니다... (예: "아이유 좋은 날 틀어줘")'
+              : status === 'processing'
+                ? '요청을 처리하는 중입니다...'
+                : '마이크를 눌러 노래를 요청하세요'}
         </p>
       </div>
 
-      {transcript && (
-        <div className="transcript-box">
-          <span className="label">인식된 음성</span>
-          <p>{transcript}</p>
+      <form className="text-command" onSubmit={handleTextSubmit}>
+        <label htmlFor="text-command">텍스트로도 같은 흐름을 실행할 수 있습니다</label>
+        <div className="text-command-row">
+          <input
+            id="text-command"
+            value={textCommand}
+            onChange={(event) => setTextCommand(event.target.value)}
+            placeholder='예: 아이유 좋은 날 재생해줘'
+            disabled={status === 'processing'}
+          />
+          <button type="submit" disabled={status === 'processing' || !textCommand.trim()}>
+            실행
+          </button>
         </div>
-      )}
+      </form>
 
-      {status === 'processing' && statusMessage && (
-        <div className="status-box processing">
-          <div className="spinner" />
-          <p>{statusMessage}</p>
-        </div>
+      {logs.length > 0 && (
+        <ol className="pipeline-log">
+          {logs.map((entry) => (
+            <li key={entry.id} className={`pipeline-item ${entry.state}`}>
+              <span className="pipeline-step">{entry.step}</span>
+              <p>{entry.text}</p>
+              {entry.state === 'running' && <span className="mini-spinner" />}
+            </li>
+          ))}
+          <div ref={logEndRef} />
+        </ol>
       )}
 
       {displayError && (
@@ -160,7 +255,7 @@ export function VoicePlayer() {
           <div className="track-info">
             <p className="track-name">{currentTrack.name}</p>
             <p className="track-artist">
-              {currentTrack.artists.map((a) => a.name).join(', ')}
+              {currentTrack.artists.map((artist) => artist.name).join(', ')}
             </p>
             <p className="track-id">Spotify ID: {currentTrack.id}</p>
           </div>
@@ -204,6 +299,10 @@ export function VoicePlayer() {
             {new Date(lastPlayed.playedAt).toLocaleString('ko-KR')}
           </span>
         </div>
+      )}
+
+      {!isReady && (
+        <p className="player-ready-hint">Spotify 플레이어 연결 중... 검색은 바로 진행됩니다.</p>
       )}
     </div>
   );

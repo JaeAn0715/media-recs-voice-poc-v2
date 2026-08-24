@@ -6,11 +6,16 @@ import {
 } from '../services/spotify';
 import type { SpotifyPlayer } from '../types';
 
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export function useSpotifyPlayer() {
   const [deviceId, setDeviceId] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [playerError, setPlayerError] = useState<string | null>(null);
   const playerRef = useRef<SpotifyPlayer | null>(null);
+  const deviceIdRef = useRef<string | null>(null);
 
   const initializePlayer = useCallback(async () => {
     const token = getAccessToken();
@@ -26,12 +31,14 @@ export function useSpotifyPlayer() {
       });
 
       player.addListener('ready', ({ device_id }: { device_id: string }) => {
+        deviceIdRef.current = device_id;
         setDeviceId(device_id);
         setIsReady(true);
         setPlayerError(null);
       });
 
       player.addListener('not_ready', () => {
+        deviceIdRef.current = null;
         setIsReady(false);
       });
 
@@ -69,15 +76,21 @@ export function useSpotifyPlayer() {
     };
   }, [initializePlayer]);
 
-  const play = useCallback(
-    async (trackUri: string) => {
-      if (!deviceId) {
-        throw new Error('Spotify 플레이어가 준비되지 않았습니다.');
+  const waitForDevice = useCallback(async () => {
+    const started = Date.now();
+    while (!deviceIdRef.current) {
+      if (Date.now() - started > 10000) {
+        throw new Error('Spotify 플레이어가 준비되지 않았습니다. Premium 계정과 브라우저 재생 권한을 확인해 주세요.');
       }
-      await playTrack(trackUri, deviceId);
-    },
-    [deviceId],
-  );
+      await sleep(250);
+    }
+    return deviceIdRef.current;
+  }, []);
+
+  const play = useCallback(async (trackUri: string) => {
+    const readyDeviceId = await waitForDevice();
+    await playTrack(trackUri, readyDeviceId);
+  }, [waitForDevice]);
 
   return {
     deviceId,
