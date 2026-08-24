@@ -42,4 +42,14 @@ npm start
 3. 해당 호선의 실시간 열차 위치에서 같은 열차번호(`trainNo`)를 찾아 상태를 표시합니다.
 4. 위치정보를 20초 간격으로 다시 요청합니다.
 
-인증키는 브라우저 번들에 포함하지 않고 Express 프록시에서만 사용합니다.
+인증키는 브라우저 번들에 포함하지 않고 Express 프록시와 Vercel 서버리스 함수에서만 사용합니다.
+
+## Vercel 배포
+
+`Web` 폴더를 루트로 하는 새 Vercel 프로젝트로 배포합니다.
+
+```bash
+npx vercel --cwd Web --yes --prod
+```
+
+Vercel 프로젝트 환경 변수에 `SEOUL_SUBWAY_API_KEY`를 설정해야 실시간 조회가 동작합니다.
