@@ -1,0 +1,28 @@
+{
+  "name": "subway-tracker-backend",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "test": "vitest run",
+    "lint": "oxlint src"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "tsx": "^4.23.12",
+    "web-push": "^3.6.7"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/node": "^24.13.3",
+    "@types/web-push": "^3.6.4",
+    "oxlint": "^1.79.0",
+    "typescript": "~6.0.2",
+    "vitest": "^4.1.11"
+  }
+}
