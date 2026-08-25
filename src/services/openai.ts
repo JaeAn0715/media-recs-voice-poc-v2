@@ -2,65 +2,80 @@ import { getStoredLocale, t } from '../i18n';
 import type { ExtractedSong } from '../types';
 import { getOpenAIApiKey } from './credentials';
 import { fetchWithTimeout, readApiError } from './http';
+import { inferSongFromUtterance } from './songQuery';
 
 const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 
 export async function extractSongFromUtterance(utterance: string): Promise<ExtractedSong> {
+  const fallback = inferSongFromUtterance(utterance);
   const apiKey = getOpenAIApiKey();
   if (!apiKey) {
+    if (fallback) return fallback;
     throw new Error(t('noOpenaiKey'));
   }
 
-  const response = await fetchWithTimeout(
-    OPENAI_API_URL,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        temperature: 0,
-        response_format: { type: 'json_object' },
-        messages: [
-          {
-            role: 'system',
-            content: `사용자의 음성 명령에서 재생할 노래 정보를 추출하세요.
+  try {
+    const response = await fetchWithTimeout(
+      OPENAI_API_URL,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          temperature: 0,
+          response_format: { type: 'json_object' },
+          messages: [
+            {
+              role: 'system',
+              content: `사용자의 음성 명령에서 Spotify로 검색할 노래 제목과 아티스트를 추출하세요.
 예: "보헤미안 랩소디 틀어줘" → {"title": "Bohemian Rhapsody", "artist": "Queen"}
 예: "아이유 좋은 날 재생해줘" → {"title": "좋은 날", "artist": "아이유"}
-노래 제목이 없으면 {"title": "", "artist": ""}를 반환하세요.
+예: "러브어택" → {"title": "러브어택", "artist": ""}
+곡의 실제 존재 여부를 판단하거나 검증하지 마세요. 생소하거나 오타처럼 보여도 사용자가 입력한 제목을 그대로 보존하세요.
+입력이 짧은 단어 또는 문구뿐이면 그 전체를 노래 제목으로 사용하세요.
+재생 요청어만 있고 검색할 문자열이 전혀 없을 때만 {"title": "", "artist": ""}를 반환하세요.
 반드시 JSON 형식으로만 응답하세요: {"title": "...", "artist": "..."}`,
-          },
-          {
-            role: 'user',
-            content: utterance,
-          },
-        ],
-      }),
-    },
-    'ChatGPT',
-  );
+            },
+            {
+              role: 'user',
+              content: utterance,
+            },
+          ],
+        }),
+      },
+      'ChatGPT',
+    );
 
-  if (!response.ok) {
-    throw new Error(t('openaiError', { detail: await readApiError(response) }));
+    if (!response.ok) {
+      if (fallback) return fallback;
+      throw new Error(t('openaiError', { detail: await readApiError(response) }));
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
+    if (!content) {
+      if (fallback) return fallback;
+      throw new Error(t('extractFailed'));
+    }
+
+    const parsed = JSON.parse(content) as ExtractedSong;
+    if (!parsed.title?.trim()) {
+      if (fallback) return fallback;
+      throw new Error(t('noTitleInSpeech'));
+    }
+
+    return {
+      title: parsed.title.trim(),
+      artist: parsed.artist?.trim() || undefined,
+      source: 'llm',
+    };
+  } catch (error) {
+    if (fallback) return fallback;
+    throw error;
   }
-
-  const data = await response.json();
-  const content = data.choices?.[0]?.message?.content;
-  if (!content) {
-    throw new Error(t('extractFailed'));
-  }
-
-  const parsed = JSON.parse(content) as ExtractedSong;
-  if (!parsed.title?.trim()) {
-    throw new Error(t('noTitleInSpeech'));
-  }
-
-  return {
-    title: parsed.title.trim(),
-    artist: parsed.artist?.trim() || undefined,
-  };
 }
 
 export async function recommendSimilarSongs(

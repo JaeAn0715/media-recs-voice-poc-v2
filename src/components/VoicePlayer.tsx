@@ -100,7 +100,12 @@ export function VoicePlayer() {
           : `"${extracted.title}"`;
         updateLog(
           gptLog,
-          t('filteredTitle', { query: queryLabel }),
+          t(
+            extracted.source === 'input-fallback'
+              ? 'filteredTitleFallback'
+              : 'filteredTitle',
+            { query: queryLabel },
+          ),
           'done',
         );
 

@@ -43,6 +43,7 @@ export interface PlayedSong {
 export interface ExtractedSong {
   title: string;
   artist?: string;
+  source?: 'llm' | 'input-fallback';
 }
 
 declare global {
