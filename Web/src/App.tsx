@@ -1,14 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import './App.css'
-import { getLine, getStations, LINES } from './data/transitNetwork'
-import {
-  ARRIVAL_LABELS,
-  findNextTrain,
-  POSITION_LABELS,
-  shortestPath,
-  type Arrival,
-  type TrainPosition,
-} from './lib/trainMatcher'
+import { getLine, getStations, LINES } from '@shared/transitNetwork.ts'
+import { registerPushSubscription } from './lib/push.ts'
+import type { TrackSnapshot } from './lib/types.ts'
 
 const DEFAULT_ROUTES: Record<string, [string, string]> = {
   '1001': ['서울역', '종각'],
@@ -25,16 +19,14 @@ const DEFAULT_ROUTES: Record<string, [string, string]> = {
 function App() {
   const [lineId, setLineId] = useState(LINES[1].id)
   const line = getLine(lineId) ?? LINES[1]
-  const stations = useMemo(() => getStations(line), [line])
+  const stations = getStations(line)
   const [boarding, setBoarding] = useState('강남')
   const [destination, setDestination] = useState('잠실')
-  const [trackedArrival, setTrackedArrival] = useState<Arrival>()
-  const [position, setPosition] = useState<TrainPosition>()
+  const [track, setTrack] = useState<TrackSnapshot>()
   const [isFinding, setIsFinding] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [error, setError] = useState('')
-  const [refreshWarning, setRefreshWarning] = useState('')
-  const [updatedAt, setUpdatedAt] = useState<Date>()
+  const [pushStatus, setPushStatus] = useState('')
   const [secondsUntilRefresh, setSecondsUntilRefresh] = useState(20)
   const requestId = useRef(0)
 
@@ -47,10 +39,9 @@ function App() {
     setLineId(newLineId)
     setBoarding(defaultRoute[0])
     setDestination(defaultRoute[1])
-    setTrackedArrival(undefined)
-    setPosition(undefined)
+    setTrack(undefined)
     setError('')
-    setRefreshWarning('')
+    setPushStatus('')
   }
 
   const readJson = async <T,>(response: Response) => {
@@ -59,29 +50,14 @@ function App() {
     return body
   }
 
-  const refreshPosition = useCallback(
-    async (arrival: Arrival, selectedLineId: string, silent = false) => {
-      const selectedLine = getLine(selectedLineId)
-      if (!selectedLine) return
+  const refreshTrack = useCallback(
+    async (trackId: string, silent = false) => {
       if (!silent) setIsRefreshing(true)
-
       try {
-        const response = await fetch(
-          `/api/positions?line=${encodeURIComponent(selectedLine.name)}`,
-        )
-        const data = await readJson<{ positions: TrainPosition[] }>(response)
-        const nextPosition = data.positions.find(
-          (item) => String(item.trainNo) === String(arrival.btrainNo),
-        )
-        setPosition(nextPosition)
-        setUpdatedAt(new Date())
-        setRefreshWarning(
-          nextPosition
-            ? ''
-            : '열차 위치가 아직 수신되지 않았습니다. 다음 갱신 때 다시 확인합니다.',
-        )
+        const response = await fetch(`/api/tracks/${trackId}`)
+        setTrack(await readJson<TrackSnapshot>(response))
       } catch (caught) {
-        setRefreshWarning(
+        setError(
           caught instanceof Error ? caught.message : '위치 갱신에 실패했습니다.',
         )
       } finally {
@@ -93,11 +69,10 @@ function App() {
   )
 
   useEffect(() => {
-    if (!trackedArrival) return
-    const selectedLineId = lineId
-
+    if (!track?.trackId) return
+    const trackId = track.trackId
     const refreshTimer = window.setInterval(() => {
-      void refreshPosition(trackedArrival, selectedLineId, true)
+      void refreshTrack(trackId, true)
     }, 20_000)
     const countdownTimer = window.setInterval(() => {
       setSecondsUntilRefresh((seconds) => (seconds <= 1 ? 20 : seconds - 1))
@@ -107,7 +82,7 @@ function App() {
       window.clearInterval(refreshTimer)
       window.clearInterval(countdownTimer)
     }
-  }, [lineId, refreshPosition, trackedArrival])
+  }, [refreshTrack, track?.trackId])
 
   const findTrain = async (event: React.FormEvent) => {
     event.preventDefault()
@@ -119,31 +94,35 @@ function App() {
     const currentRequest = ++requestId.current
     setIsFinding(true)
     setError('')
-    setRefreshWarning('')
-    setTrackedArrival(undefined)
-    setPosition(undefined)
+    setTrack(undefined)
 
     try {
-      const response = await fetch(
-        `/api/arrivals?station=${encodeURIComponent(boarding)}`,
-      )
-      const data = await readJson<{ arrivals: Arrival[] }>(response)
-      const arrival = findNextTrain(
-        data.arrivals,
-        line,
-        boarding,
-        destination,
-      )
-
-      if (!arrival) {
-        throw new Error(
-          '현재 목적지 방향으로 운행하는 도착 예정 열차를 찾지 못했습니다.',
+      let subscription: PushSubscriptionJSON | undefined
+      try {
+        subscription = await registerPushSubscription()
+        setPushStatus(
+          subscription
+            ? '목적지 1역 전 푸시 알림을 보내드립니다.'
+            : '브라우저 알림이 꺼져 있어 화면에서만 추적합니다.',
         )
+      } catch {
+        setPushStatus('푸시 구독에 실패해 화면에서만 추적합니다.')
       }
+
+      const response = await fetch('/api/tracks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lineId,
+          boarding,
+          destination,
+          subscription,
+        }),
+      })
+      const snapshot = await readJson<TrackSnapshot>(response)
       if (requestId.current !== currentRequest) return
-      setTrackedArrival(arrival)
+      setTrack(snapshot)
       setSecondsUntilRefresh(20)
-      void refreshPosition(arrival, lineId)
     } catch (caught) {
       if (requestId.current !== currentRequest) return
       setError(
@@ -155,23 +134,6 @@ function App() {
       if (requestId.current === currentRequest) setIsFinding(false)
     }
   }
-
-  const nextStation = useMemo(() => {
-    if (!position) return undefined
-    return shortestPath(line, position.statnNm, destination)[1]
-  }, [destination, line, position])
-
-  const statusText = position
-    ? position.trainSttus === '1'
-      ? `${position.statnNm}역에 정차 중`
-      : position.trainSttus === '0'
-        ? `${position.statnNm}역으로 진입 중`
-        : position.trainSttus === '2'
-          ? `${position.statnNm}역에서 출발`
-          : `${position.statnNm}역 전역에서 출발`
-    : trackedArrival
-      ? trackedArrival.arvlMsg2
-      : ''
 
   return (
     <main className="app-shell">
@@ -192,8 +154,8 @@ function App() {
         <p className="eyebrow">SEOUL METRO LIVE</p>
         <h1>내가 탈 열차, 지금 어디쯤일까요?</h1>
         <p>
-          출발역과 도착역을 선택하면 다음 열차를 찾아
-          <br className="desktop-only" /> 20초마다 현재 위치를 알려드려요.
+          백엔드가 전체 열차 위치를 20초마다 갱신하고
+          <br className="desktop-only" /> 목적지 1역 전에 웹 푸시로 알려드려요.
         </p>
       </section>
 
@@ -291,8 +253,8 @@ function App() {
           </button>
         </form>
 
-        <section className={`status-card ${trackedArrival ? 'active' : ''}`}>
-          {!trackedArrival ? (
+        <section className={`status-card ${track ? 'active' : ''}`}>
+          {!track ? (
             <div className="empty-state">
               <div className="empty-illustration" aria-hidden="true">
                 <div className="rail rail-left" />
@@ -322,25 +284,30 @@ function App() {
                 <span className="line-pill" style={{ background: line.color }}>
                   {line.shortName}
                 </span>
-                <span className="train-label">열차 {trackedArrival.btrainNo}</span>
+                <span className="train-label">열차 {track.trainNo}</span>
                 <span className="tracking-chip">
                   <span className="live-dot" /> 추적 중
                 </span>
               </div>
 
               <p className="route-summary">
-                {boarding}역 <span>→</span> {destination}역
+                {track.boarding}역 <span>→</span> {track.destination}역
               </p>
               <div className="current-status">
                 <span className="status-kicker">현재 열차 상태</span>
-                <h2>{statusText || '위치 확인 중'}</h2>
-                {position && nextStation && position.trainSttus !== '1' && (
-                  <p>{nextStation}역 방면으로 운행하고 있어요</p>
+                <h2>{track.statusText || '위치 확인 중'}</h2>
+                {track.position &&
+                  track.nextStation &&
+                  track.position.trainSttus !== '1' && (
+                    <p>{track.nextStation}역 방면으로 운행하고 있어요</p>
+                  )}
+                {track.remainingStations === 1 && (
+                  <p>목적지까지 1역 남았습니다.</p>
                 )}
-                {!position && (
+                {!track.position && (
                   <p>
-                    {trackedArrival.arvlMsg3 ??
-                      `${boarding}역 도착 정보를 확인했어요`}
+                    {track.arrivalDetail ??
+                      `${track.boarding}역 도착 정보를 확인했어요`}
                   </p>
                 )}
               </div>
@@ -348,19 +315,18 @@ function App() {
               <div className="detail-grid">
                 <div>
                   <span>운행 방향</span>
-                  <strong>{trackedArrival.trainLineNm ?? '-'}</strong>
+                  <strong>{track.trainLineNm ?? '-'}</strong>
                 </div>
                 <div>
                   <span>열차 종류</span>
-                  <strong>{trackedArrival.btrainSttus ?? '일반'}</strong>
+                  <strong>{track.trainType ?? '일반'}</strong>
                 </div>
                 <div>
-                  <span>상태 코드</span>
+                  <span>남은 역</span>
                   <strong>
-                    {position
-                      ? (POSITION_LABELS[position.trainSttus ?? ''] ?? '운행 중')
-                      : (ARRIVAL_LABELS[trackedArrival.arvlCd ?? ''] ??
-                        '도착 예정')}
+                    {track.remainingStations === null
+                      ? '확인 중'
+                      : `${track.remainingStations}개`}
                   </strong>
                 </div>
                 <div>
@@ -369,21 +335,22 @@ function App() {
                 </div>
               </div>
 
-              {refreshWarning && (
+              {track.warning && (
                 <p className="refresh-warning" role="status">
-                  {refreshWarning}
+                  {track.warning}
                 </p>
               )}
+              {pushStatus && <p className="push-note">{pushStatus}</p>}
               <div className="update-row">
                 <span>
-                  {updatedAt
-                    ? `${updatedAt.toLocaleTimeString('ko-KR')} 업데이트`
+                  {track.cacheUpdatedAt
+                    ? `${new Date(track.cacheUpdatedAt).toLocaleTimeString('ko-KR')} 캐시`
                     : '위치 정보 확인 중'}
                 </span>
                 <button
                   type="button"
                   disabled={isRefreshing}
-                  onClick={() => void refreshPosition(trackedArrival, lineId)}
+                  onClick={() => void refreshTrack(track.trackId)}
                 >
                   <svg viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M20 6v5h-5M4 18v-5h5m10-2a7 7 0 0 0-12-4L4 11m1 2a7 7 0 0 0 12 4l3-4" />

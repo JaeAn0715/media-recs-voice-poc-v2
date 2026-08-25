@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { getLine } from '../data/transitNetwork'
-import { findNextTrain, shortestPath, type Arrival } from './trainMatcher'
+import { getLine } from './transitNetwork.ts'
+import {
+  findNextTrain,
+  remainingOnPath,
+  shouldNotifyOneStop,
+  shortestPath,
+  type Arrival,
+} from './trainMatcher.ts'
 
 const line2 = getLine('1002')!
 
@@ -18,6 +24,30 @@ describe('shortestPath', () => {
       '시청',
       '을지로입구',
     ])
+  })
+})
+
+describe('remainingOnPath', () => {
+  it('counts stations left until the destination', () => {
+    const path = shortestPath(line2, '강남', '잠실')
+    expect(remainingOnPath(path, '강남')).toBe(path.length - 1)
+    expect(remainingOnPath(path, '종합운동장')).toBe(2)
+    expect(remainingOnPath(path, '잠실새내')).toBe(1)
+    expect(remainingOnPath(path, '잠실')).toBe(0)
+  })
+
+  it('returns null when the train is not on the trip path yet', () => {
+    const path = shortestPath(line2, '강남', '잠실')
+    expect(remainingOnPath(path, '홍대입구')).toBeNull()
+  })
+})
+
+describe('shouldNotifyOneStop', () => {
+  it('notifies only once when one station remains', () => {
+    const path = shortestPath(line2, '강남', '잠실')
+    expect(shouldNotifyOneStop(false, path, '잠실새내')).toBe(true)
+    expect(shouldNotifyOneStop(true, path, '잠실새내')).toBe(false)
+    expect(shouldNotifyOneStop(false, path, '종합운동장')).toBe(false)
   })
 })
 

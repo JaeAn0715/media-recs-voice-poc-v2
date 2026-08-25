@@ -1,0 +1,5 @@
+{
+  "name": "subway-tracker-shared",
+  "private": true,
+  "type": "module"
+}
