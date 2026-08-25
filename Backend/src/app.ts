@@ -1,5 +1,6 @@
 import cors from 'cors'
 import express from 'express'
+import path from 'node:path'
 import { getLine, getStations, LINES } from '../../shared/transitNetwork.ts'
 import { ApiError, errorPayload } from './seoulApi.ts'
 import { getVapidPublicKey } from './push.ts'
@@ -111,6 +112,18 @@ export const createApp = () => {
       stations: getStations(line),
     })
   })
+
+  const webDist = process.env.WEB_DIST_PATH
+  if (webDist) {
+    app.use(express.static(webDist))
+    app.get(/^(?!\/api(?:\/|$)).*/, (req, res, next) => {
+      if (req.method !== 'GET' && req.method !== 'HEAD') {
+        next()
+        return
+      }
+      res.sendFile(path.join(webDist, 'index.html'))
+    })
+  }
 
   app.use(
     (

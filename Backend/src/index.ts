@@ -9,6 +9,6 @@ const app = createApp()
 onPositionRefresh(() => notifyDueTracks())
 startPositionPolling()
 
-app.listen(port, () => {
-  console.log(`Subway tracker backend listening on http://localhost:${port}`)
+app.listen(port, '0.0.0.0', () => {
+  console.log(`Subway tracker backend listening on http://0.0.0.0:${port}`)
 })

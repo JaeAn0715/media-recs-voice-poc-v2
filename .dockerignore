@@ -1,0 +1,10 @@
+.git
+**/.env
+**/.env.*
+!**/.env.example
+**/.vapid.json
+**/node_modules
+**/.vercel
+Web/dist
+**/*.log
+**/.DS_Store

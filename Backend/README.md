@@ -40,3 +40,13 @@ npm run dev
 ```
 
 추적은 3시간 뒤 만료됩니다.
+
+## Fly.io (테스트, 최저 사양)
+
+한 대 머신(`shared-cpu-1x` / 256MB)에 웹과 API를 같이 올립니다. 트래픽이 없으면 자동 중지됩니다.
+
+```bash
+fly apps create seoul-subway-tracker-cf71 --ha=false
+fly secrets set SEOUL_SUBWAY_API_KEY=발급키
+fly deploy --ha=false
+```
