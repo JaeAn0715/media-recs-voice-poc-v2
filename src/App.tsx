@@ -9,7 +9,7 @@ import {
   getSpotifyClientId,
   saveBrowserCredentials,
 } from './services/credentials';
-import { getAccessToken, getRedirectUri, initiateLogin } from './services/spotify';
+import { ensureValidAccessToken, getRedirectUri, initiateLogin } from './services/spotify';
 import './App.css';
 
 function AppShell() {
@@ -27,8 +27,10 @@ function AppShell() {
 
   useEffect(() => {
     if (!isCallback) {
-      setIsAuthenticated(!!getAccessToken());
-      setIsChecking(false);
+      ensureValidAccessToken()
+        .then(() => setIsAuthenticated(true))
+        .catch(() => setIsAuthenticated(false))
+        .finally(() => setIsChecking(false));
     }
   }, [isCallback]);
 

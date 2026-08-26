@@ -17,9 +17,19 @@ const SCOPES = [
 
 const TOKEN_KEY = 'spotify_access_token';
 const TOKEN_EXPIRY_KEY = 'spotify_token_expiry';
+const REFRESH_TOKEN_KEY = 'spotify_refresh_token';
 const VERIFIER_KEY = 'spotify_code_verifier';
 const AUTH_STATE_KEY = 'spotify_auth_state';
 const REDIRECT_URI_KEY = 'spotify_redirect_uri';
+const TOKEN_EXPIRY_BUFFER_MS = 60000;
+
+interface SpotifyTokenResponse {
+  access_token: string;
+  expires_in: number;
+  refresh_token?: string;
+}
+
+let refreshPromise: Promise<string> | null = null;
 
 export function getConfiguredClientId(): string {
   return readStoredClientId();
@@ -43,27 +53,102 @@ export function getRedirectUri(): string {
 }
 
 export function getAccessToken(): string | null {
-  const token = sessionStorage.getItem(TOKEN_KEY);
-  const expiry = sessionStorage.getItem(TOKEN_EXPIRY_KEY);
+  migrateSessionTokens();
+  const token = localStorage.getItem(TOKEN_KEY);
+  const expiry = localStorage.getItem(TOKEN_EXPIRY_KEY);
   if (!token || !expiry) return null;
   if (Date.now() > parseInt(expiry, 10)) {
-    clearTokens();
     return null;
   }
   return token;
 }
 
 export function clearTokens(): void {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(TOKEN_EXPIRY_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
   sessionStorage.removeItem(TOKEN_KEY);
   sessionStorage.removeItem(TOKEN_EXPIRY_KEY);
+  sessionStorage.removeItem(REFRESH_TOKEN_KEY);
+  clearPendingAuth();
+}
+
+function clearPendingAuth(): void {
   sessionStorage.removeItem(VERIFIER_KEY);
   sessionStorage.removeItem(AUTH_STATE_KEY);
   sessionStorage.removeItem(REDIRECT_URI_KEY);
 }
 
-function storeToken(accessToken: string, expiresIn: number): void {
-  sessionStorage.setItem(TOKEN_KEY, accessToken);
-  sessionStorage.setItem(TOKEN_EXPIRY_KEY, String(Date.now() + expiresIn * 1000 - 60000));
+function migrateSessionTokens(): void {
+  const localToken = localStorage.getItem(TOKEN_KEY);
+  const sessionToken = sessionStorage.getItem(TOKEN_KEY);
+  const sessionExpiry = sessionStorage.getItem(TOKEN_EXPIRY_KEY);
+  if (!localToken && sessionToken && sessionExpiry) {
+    localStorage.setItem(TOKEN_KEY, sessionToken);
+    localStorage.setItem(TOKEN_EXPIRY_KEY, sessionExpiry);
+  }
+  sessionStorage.removeItem(TOKEN_KEY);
+  sessionStorage.removeItem(TOKEN_EXPIRY_KEY);
+}
+
+function storeToken(data: SpotifyTokenResponse): void {
+  localStorage.setItem(TOKEN_KEY, data.access_token);
+  localStorage.setItem(
+    TOKEN_EXPIRY_KEY,
+    String(Date.now() + data.expires_in * 1000 - TOKEN_EXPIRY_BUFFER_MS),
+  );
+  if (data.refresh_token) {
+    localStorage.setItem(REFRESH_TOKEN_KEY, data.refresh_token);
+  }
+}
+
+async function refreshAccessToken(): Promise<string> {
+  const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
+  if (!refreshToken) {
+    throw new Error('Spotify에 다시 로그인이 필요합니다.');
+  }
+
+  const response = await fetchWithTimeout(
+    SPOTIFY_TOKEN_URL,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: getClientId(),
+        grant_type: 'refresh_token',
+        refresh_token: refreshToken,
+      }),
+    },
+    'Spotify 로그인 갱신',
+  );
+
+  if (!response.ok) {
+    const detail = await readApiError(response);
+    if (response.status === 400 || response.status === 401) {
+      clearTokens();
+    }
+    throw new Error(`Spotify 로그인 갱신 실패: ${detail}`);
+  }
+
+  const data = (await response.json()) as SpotifyTokenResponse;
+  storeToken(data);
+  return data.access_token;
+}
+
+export async function ensureValidAccessToken(): Promise<string> {
+  const token = getAccessToken();
+  if (token) return token;
+
+  if (!localStorage.getItem(REFRESH_TOKEN_KEY)) {
+    throw new Error('Spotify에 로그인이 필요합니다.');
+  }
+
+  if (!refreshPromise) {
+    refreshPromise = refreshAccessToken().finally(() => {
+      refreshPromise = null;
+    });
+  }
+  return refreshPromise;
 }
 
 export async function initiateLogin(): Promise<void> {
@@ -118,18 +203,13 @@ export async function handleAuthCallback(code: string, state: string | null): Pr
     throw new Error(`Spotify 인증 실패: ${error}`);
   }
 
-  const data = await response.json();
-  storeToken(data.access_token, data.expires_in);
-  sessionStorage.removeItem(VERIFIER_KEY);
-  sessionStorage.removeItem(AUTH_STATE_KEY);
-  sessionStorage.removeItem(REDIRECT_URI_KEY);
+  const data = (await response.json()) as SpotifyTokenResponse;
+  storeToken(data);
+  clearPendingAuth();
 }
 
 export async function searchTrack(title: string, artist?: string): Promise<SpotifyTrack> {
-  const token = getAccessToken();
-  if (!token) {
-    throw new Error('Spotify에 로그인이 필요합니다. 다시 로그인해 주세요.');
-  }
+  const token = await ensureValidAccessToken();
 
   const query = [title, artist].filter(Boolean).join(' ');
   const params = new URLSearchParams({
@@ -227,10 +307,7 @@ export async function resolveRecommendedTracks(
 }
 
 export async function transferPlayback(deviceId: string, play = false): Promise<void> {
-  const token = getAccessToken();
-  if (!token) {
-    throw new Error('Spotify에 로그인이 필요합니다.');
-  }
+  const token = await ensureValidAccessToken();
 
   const response = await fetchWithTimeout(
     `${SPOTIFY_API_URL}/me/player`,
@@ -254,10 +331,7 @@ export async function transferPlayback(deviceId: string, play = false): Promise<
 }
 
 export async function playTrack(trackUri: string, deviceId: string): Promise<void> {
-  const token = getAccessToken();
-  if (!token) {
-    throw new Error('Spotify에 로그인이 필요합니다.');
-  }
+  const token = await ensureValidAccessToken();
 
   await transferPlayback(deviceId, false);
 

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  ensureValidAccessToken,
   getAccessToken,
   loadSpotifySDK,
   playTrack,
@@ -19,15 +20,22 @@ export function useSpotifyPlayer() {
   const deviceIdRef = useRef<string | null>(null);
 
   const initializePlayer = useCallback(async () => {
-    const token = getAccessToken();
-    if (!token) return;
-
     try {
+      await ensureValidAccessToken();
       await loadSpotifySDK();
 
       const player = new window.Spotify.Player({
         name: 'Voice Music Player',
-        getOAuthToken: (cb) => cb(getAccessToken() ?? ''),
+        getOAuthToken: (cb) => {
+          const current = getAccessToken();
+          if (current) {
+            cb(current);
+            return;
+          }
+          void ensureValidAccessToken()
+            .then(cb)
+            .catch(() => cb(''));
+        },
         volume: 1,
       });
 
