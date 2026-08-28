@@ -1,6 +1,11 @@
 import { t } from '../i18n';
 import type { PlayedSong, RecommendationSet } from '../types';
 import { recommendSimilarSongs } from './openai';
+import {
+  buildExcludedSongs,
+  buildExcludedTrackIds,
+  excludePreviouslyKnownSuggestions,
+} from './recommendationExclusions';
 import { resolveRecommendedTracks } from './spotify';
 import {
   getMostPlayedSong,
@@ -19,13 +24,7 @@ export async function createRecommendationSet(
   }
 
   const previousRecommendations = getPreviouslyRecommendedTracks(getRecommendationSets());
-  const excludedSongs = [
-    ...played.map((song) => ({ title: song.title, artist: song.artist })),
-    ...previousRecommendations.map((track) => ({
-      title: track.title,
-      artist: track.artist,
-    })),
-  ];
+  const excludedSongs = buildExcludedSongs(played, previousRecommendations);
 
   onProgress?.(t('llmRecommendProgress'));
   const suggestions = await recommendSimilarSongs(
@@ -33,21 +32,11 @@ export async function createRecommendationSet(
     excludedSongs,
   );
 
-  const excludedNames = new Set(
-    excludedSongs.map(
-      (song) => `${song.title.trim().toLowerCase()}::${song.artist.trim().toLowerCase()}`,
-    ),
+  const filteredSuggestions = excludePreviouslyKnownSuggestions(
+    suggestions,
+    excludedSongs,
   );
-  const filteredSuggestions = suggestions.filter(
-    (song) =>
-      !excludedNames.has(
-        `${song.title.trim().toLowerCase()}::${song.artist.trim().toLowerCase()}`,
-      ),
-  );
-  const excludeIds = new Set([
-    ...played.map((song) => song.id).filter(Boolean),
-    ...previousRecommendations.map((track) => track.id).filter(Boolean),
-  ]);
+  const excludeIds = buildExcludedTrackIds(played, previousRecommendations);
   onProgress?.(t('spotifySearchProgress', { done: 0, total: filteredSuggestions.length }));
   const tracks = await resolveRecommendedTracks(filteredSuggestions, excludeIds, (done, total) => {
     onProgress?.(t('spotifySearchProgress', { done, total }));
