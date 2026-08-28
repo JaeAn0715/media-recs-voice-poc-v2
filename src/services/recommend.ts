@@ -2,7 +2,12 @@ import { t } from '../i18n';
 import type { PlayedSong, RecommendationSet } from '../types';
 import { recommendSimilarSongs } from './openai';
 import { resolveRecommendedTracks } from './spotify';
-import { getMostPlayedSong, saveRecommendationSet } from './storage';
+import {
+  getMostPlayedSong,
+  getPreviouslyRecommendedTracks,
+  getRecommendationSets,
+  saveRecommendationSet,
+} from './storage';
 
 export async function createRecommendationSet(
   played: PlayedSong[],
@@ -13,15 +18,38 @@ export async function createRecommendationSet(
     throw new Error(t('needPlayHistory'));
   }
 
+  const previousRecommendations = getPreviouslyRecommendedTracks(getRecommendationSets());
+  const excludedSongs = [
+    ...played.map((song) => ({ title: song.title, artist: song.artist })),
+    ...previousRecommendations.map((track) => ({
+      title: track.title,
+      artist: track.artist,
+    })),
+  ];
+
   onProgress?.(t('llmRecommendProgress'));
   const suggestions = await recommendSimilarSongs(
     { title: seed.title, artist: seed.artist },
-    played.map((song) => ({ title: song.title, artist: song.artist })),
+    excludedSongs,
   );
 
-  const excludeIds = new Set(played.map((song) => song.id).filter(Boolean));
-  onProgress?.(t('spotifySearchProgress', { done: 0, total: suggestions.length }));
-  const tracks = await resolveRecommendedTracks(suggestions, excludeIds, (done, total) => {
+  const excludedNames = new Set(
+    excludedSongs.map(
+      (song) => `${song.title.trim().toLowerCase()}::${song.artist.trim().toLowerCase()}`,
+    ),
+  );
+  const filteredSuggestions = suggestions.filter(
+    (song) =>
+      !excludedNames.has(
+        `${song.title.trim().toLowerCase()}::${song.artist.trim().toLowerCase()}`,
+      ),
+  );
+  const excludeIds = new Set([
+    ...played.map((song) => song.id).filter(Boolean),
+    ...previousRecommendations.map((track) => track.id).filter(Boolean),
+  ]);
+  onProgress?.(t('spotifySearchProgress', { done: 0, total: filteredSuggestions.length }));
+  const tracks = await resolveRecommendedTracks(filteredSuggestions, excludeIds, (done, total) => {
     onProgress?.(t('spotifySearchProgress', { done, total }));
   });
 

@@ -3,6 +3,7 @@ import type {
   PlayedSong,
   PlayedSongStat,
   RecommendationSet,
+  RecommendedTrack,
 } from '../types';
 
 const LAST_PLAYED_KEY = 'lastPlayedSong';
@@ -95,11 +96,30 @@ export function saveRecommendationSet(set: RecommendationSet): RecommendationSet
   return sets;
 }
 
-function songKey(song: PlayedSong): string {
+export function clearRecommendationSets(): void {
+  localStorage.removeItem(RECOMMENDATION_SETS_KEY);
+}
+
+function songKey(song: { id?: string; title: string; artist: string }): string {
   if (song.id && /^[A-Za-z0-9]{22}$/.test(song.id)) {
     return `id:${song.id}`;
   }
   return `name:${song.title.trim().toLowerCase()}::${song.artist.trim().toLowerCase()}`;
+}
+
+export function getPreviouslyRecommendedTracks(
+  sets: RecommendationSet[] = getRecommendationSets(),
+): RecommendedTrack[] {
+  const unique = new Map<string, RecommendedTrack>();
+  for (const set of sets) {
+    for (const track of set.tracks) {
+      const key = songKey(track);
+      if (!unique.has(key)) {
+        unique.set(key, track);
+      }
+    }
+  }
+  return [...unique.values()];
 }
 
 export function getMostPlayedSong(played: PlayedSong[] = getPlayedSongs()): PlayedSong | null {

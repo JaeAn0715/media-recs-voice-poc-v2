@@ -94,15 +94,23 @@ export async function extractSongFromUtterance(utterance: string): Promise<Extra
 
 export async function recommendSimilarSongs(
   seed: { title: string; artist: string },
-  alreadyPlayed: { title: string; artist: string }[] = [],
+  excludedSongs: { title: string; artist: string }[] = [],
 ): Promise<{ title: string; artist: string; reason?: string }[]> {
   const apiKey = getOpenAIApiKey();
   if (!apiKey) {
     throw new Error(t('noOpenaiKey'));
   }
 
-  const playedList = alreadyPlayed
-    .slice(0, 30)
+  const excludedList = excludedSongs
+    .filter(
+      (song, index, songs) =>
+        songs.findIndex(
+          (other) =>
+            other.title.trim().toLowerCase() === song.title.trim().toLowerCase() &&
+            other.artist.trim().toLowerCase() === song.artist.trim().toLowerCase(),
+        ) === index,
+    )
+    .slice(0, 250)
     .map((song, index) => `${index + 1}. ${song.title} - ${song.artist}`)
     .join('\n');
   const reasonLanguage =
@@ -126,7 +134,8 @@ export async function recommendSimilarSongs(
           {
             role: 'system',
             content: `You are a music recommendation expert. Recommend 12 real songs similar to ONE seed track.
-Exclude the seed track itself and any already-played songs. Only recommend commercially released songs that exist on Spotify.
+Exclude the seed track and every song in the exclusion list. The exclusion list contains both played songs and songs recommended in previous requests. Never recommend any of them again.
+Only recommend commercially released songs that exist on Spotify.
 Use official titles and artist names that search well on Spotify.
 ${reasonLanguage}
 Reply with JSON only:
@@ -136,8 +145,8 @@ Reply with JSON only:
             role: 'user',
             content: `Seed track: "${seed.title}" by ${seed.artist}
 
-Already played songs to exclude:
-${playedList || '(none)'}
+Songs to exclude (played or previously recommended):
+${excludedList || '(none)'}
 
 Recommend 12 similar songs to "${seed.title}".`,
           },

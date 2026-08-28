@@ -2,7 +2,10 @@ import { useState } from 'react';
 import { useLocale } from '../context/LocaleContext';
 import { hasBatchim } from '../i18n';
 import { createRecommendationSet } from '../services/recommend';
-import { getRecommendationSets } from '../services/storage';
+import {
+  clearRecommendationSets,
+  getRecommendationSets,
+} from '../services/storage';
 import type { PlayedSong, RecommendationSet, RecommendedTrack } from '../types';
 
 type PanelView = 'latest' | 'history';
@@ -170,21 +173,37 @@ export function RecommendationPanel({ playHistory, onPlayTrack }: Recommendation
           {sets.length === 0 ? (
             <p className="play-history-empty">{t('noSavedRecommendations')}</p>
           ) : (
-            sets.map((set) => (
-              <article key={set.id} className="recommend-set">
-                <h2 className="recommend-heading">
-                  <SimilarSongsHeading
-                    title={set.basedOn[0]?.title}
-                    fallback={t('thisRecommendation')}
-                  />
-                </h2>
-                <p className="recommend-meta">
-                  {formatTime(set.createdAt, locale)} · {t('trackCount', { count: set.tracks.length })}
-                  {set.basedOn[0]?.title ? ` · ${t('basedOnSong', { title: set.basedOn[0].title })}` : ''}
-                </p>
-                <TrackList tracks={set.tracks} onPlayTrack={onPlayTrack} playLabel={t('play')} />
-              </article>
-            ))
+            <>
+              {sets.map((set) => (
+                <article key={set.id} className="recommend-set">
+                  <h2 className="recommend-heading">
+                    <SimilarSongsHeading
+                      title={set.basedOn[0]?.title}
+                      fallback={t('thisRecommendation')}
+                    />
+                  </h2>
+                  <p className="recommend-meta">
+                    {formatTime(set.createdAt, locale)} · {t('trackCount', { count: set.tracks.length })}
+                    {set.basedOn[0]?.title ? ` · ${t('basedOnSong', { title: set.basedOn[0].title })}` : ''}
+                  </p>
+                  <TrackList tracks={set.tracks} onPlayTrack={onPlayTrack} playLabel={t('play')} />
+                </article>
+              ))}
+              <button
+                type="button"
+                className="clear-recommendations-button"
+                onClick={() => {
+                  if (!window.confirm(t('clearRecommendationsConfirm'))) {
+                    return;
+                  }
+                  clearRecommendationSets();
+                  setSets([]);
+                  setProgress(null);
+                }}
+              >
+                {t('clearRecommendations')}
+              </button>
+            </>
           )}
         </div>
       )}

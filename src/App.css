@@ -578,7 +578,8 @@ body {
   margin-top: 0.75rem;
 }
 
-.clear-history-button {
+.clear-history-button,
+.clear-recommendations-button {
   width: 100%;
   margin-top: 0.85rem;
   padding: 0.7rem 1rem;
@@ -590,7 +591,8 @@ body {
   cursor: pointer;
 }
 
-.clear-history-button:hover {
+.clear-history-button:hover,
+.clear-recommendations-button:hover {
   border-color: var(--error);
   color: var(--error);
 }
