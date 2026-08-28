@@ -117,13 +117,9 @@ export function useSpotifyPlayer() {
     await unlockAudio();
     const readyDeviceId = await waitForDevice();
     await playTrack(trackUri, readyDeviceId);
-    await sleep(300);
-    try {
-      await playerRef.current?.resume();
-      setIsPaused(false);
-    } catch {
-      // Already playing is fine.
-    }
+    // The REST /play request starts the selected track. Calling SDK resume here
+    // can act on stale state from the previous track and leave the new one paused.
+    setIsPaused(false);
   }, [unlockAudio, waitForDevice]);
 
   const pause = useCallback(async () => {

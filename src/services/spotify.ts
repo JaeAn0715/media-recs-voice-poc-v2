@@ -388,8 +388,6 @@ export async function transferPlayback(deviceId: string, play = false): Promise<
 export async function playTrack(trackUri: string, deviceId: string): Promise<void> {
   const token = await ensureValidAccessToken();
 
-  await transferPlayback(deviceId, false);
-
   const response = await fetchWithTimeout(
     `${SPOTIFY_API_URL}/me/player/play?device_id=${encodeURIComponent(deviceId)}`,
     {
@@ -404,7 +402,11 @@ export async function playTrack(trackUri: string, deviceId: string): Promise<voi
   );
 
   if (response.status === 404) {
-    await transferPlayback(deviceId, true);
+    // A freshly connected SDK device can briefly be missing from Spotify Connect.
+    // Transfer only in that case: transferring before every song can race with
+    // /play because Spotify does not guarantee ordering across Player endpoints.
+    await transferPlayback(deviceId, false);
+    await new Promise((resolve) => window.setTimeout(resolve, 350));
     const retry = await fetchWithTimeout(
       `${SPOTIFY_API_URL}/me/player/play?device_id=${encodeURIComponent(deviceId)}`,
       {
