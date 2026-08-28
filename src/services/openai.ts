@@ -30,13 +30,25 @@ export async function extractSongFromUtterance(utterance: string): Promise<Extra
           messages: [
             {
               role: 'system',
-              content: `사용자의 음성 명령에서 Spotify로 검색할 노래 제목과 아티스트를 추출하세요.
-예: "보헤미안 랩소디 틀어줘" → {"title": "Bohemian Rhapsody", "artist": "Queen"}
-예: "아이유 좋은 날 재생해줘" → {"title": "좋은 날", "artist": "아이유"}
-예: "러브어택" → {"title": "러브어택", "artist": ""}
-곡의 실제 존재 여부를 판단하거나 검증하지 마세요. 생소하거나 오타처럼 보여도 사용자가 입력한 제목을 그대로 보존하세요.
-입력이 짧은 단어 또는 문구뿐이면 그 전체를 노래 제목으로 사용하세요.
-재생 요청어만 있고 검색할 문자열이 전혀 없을 때만 {"title": "", "artist": ""}를 반환하세요.
+              content: `당신은 음성 인식 결과를 음악 검색어로 보정하는 전문가입니다.
+입력은 (1) 곡명, (2) 곡명과 아티스트명, (3) 아티스트명 중 하나입니다.
+
+해야 할 일:
+- 음성 인식의 동음이의어, 띄어쓰기, 발음 전사, 한글/영문 표기 오류를 보정하세요.
+- 보정 결과가 최대한 실제로 존재하는 곡의 공식 제목이나 가수의 공식 활동명과 일치하게 하세요.
+- 곡명과 아티스트가 함께 들어오면 둘을 정확히 분리하세요.
+- 곡명만 들어오면 artist는 빈 문자열로, 아티스트명만 들어오면 title은 빈 문자열로 반환하세요.
+- 확실하지 않아도 가장 가능성 높은 실제 음악 검색어를 선택하되, 입력과 무관한 곡이나 가수를 만들지 마세요.
+- "틀어줘", "재생해줘" 같은 재생 명령은 결과에서 제거하세요.
+
+예: "보헤미안 랩소디 퀸" → {"title": "Bohemian Rhapsody", "artist": "Queen"}
+예: "아이유 좋은날" → {"title": "좋은 날", "artist": "아이유"}
+예: "러브어택 리센느" → {"title": "LOVE ATTACK", "artist": "RESCENE"}
+예: "테일러 스위프트" → {"title": "", "artist": "Taylor Swift"}
+예: "브루노 막스" → {"title": "", "artist": "Bruno Mars"}
+예: "러브어택" → {"title": "LOVE ATTACK", "artist": ""}
+
+검색할 곡명과 아티스트명이 모두 없을 때만 {"title": "", "artist": ""}를 반환하세요.
 반드시 JSON 형식으로만 응답하세요: {"title": "...", "artist": "..."}`,
             },
             {
@@ -62,14 +74,16 @@ export async function extractSongFromUtterance(utterance: string): Promise<Extra
     }
 
     const parsed = JSON.parse(content) as ExtractedSong;
-    if (!parsed.title?.trim()) {
+    const title = parsed.title?.trim() || undefined;
+    const artist = parsed.artist?.trim() || undefined;
+    if (!title && !artist) {
       if (fallback) return fallback;
-      throw new Error(t('noTitleInSpeech'));
+      throw new Error(t('noMusicSearchValue'));
     }
 
     return {
-      title: parsed.title.trim(),
-      artist: parsed.artist?.trim() || undefined,
+      title,
+      artist,
       source: 'llm',
     };
   } catch (error) {

@@ -3,7 +3,8 @@ import { useLocale } from '../context/LocaleContext';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 import { useSpotifyPlayer } from '../hooks/useSpotifyPlayer';
 import { extractSongFromUtterance } from '../services/openai';
-import { searchTrack } from '../services/spotify';
+import { inferSongFromUtterance } from '../services/songQuery';
+import { searchTrackWithFallback } from '../services/spotify';
 import {
   getOpenAIApiKey,
   getSpotifyClientId,
@@ -101,9 +102,12 @@ export function VoicePlayer() {
       try {
         const extracted = await extractSongFromUtterance(command);
         if (!stillCurrent()) return;
-        const queryLabel = extracted.artist
-          ? `"${extracted.title}" - ${extracted.artist}`
-          : `"${extracted.title}"`;
+        const queryLabel =
+          extracted.title && extracted.artist
+            ? `"${extracted.title}" - ${extracted.artist}`
+            : extracted.title
+              ? `"${extracted.title}"`
+              : `${t('artistSearchLabel')}: "${extracted.artist}"`;
         updateLog(
           gptLog,
           t(
@@ -119,7 +123,12 @@ export function VoicePlayer() {
           'Spotify Open API',
           t('searchingSpotify', { query: queryLabel }),
         );
-        const track = await searchTrack(extracted.title, extracted.artist);
+        const originalSearchValue = inferSongFromUtterance(command)?.title ?? command;
+        const track = await searchTrackWithFallback(
+          extracted.title,
+          extracted.artist,
+          originalSearchValue,
+        );
         if (!stillCurrent()) return;
         const artistName = track.artists.map((artist) => artist.name).join(', ');
         setCurrentTrack(track);

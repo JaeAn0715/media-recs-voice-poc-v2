@@ -46,7 +46,7 @@ export interface PlayedSongStat {
 }
 
 export interface ExtractedSong {
-  title: string;
+  title?: string;
   artist?: string;
   source?: 'llm' | 'input-fallback';
 }

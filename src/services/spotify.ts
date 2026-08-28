@@ -29,6 +29,13 @@ interface SpotifyTokenResponse {
   refresh_token?: string;
 }
 
+export class SpotifyTrackNotFoundError extends Error {
+  constructor(query: string) {
+    super(`"${query}"을(를) Spotify에서 찾을 수 없습니다.`);
+    this.name = 'SpotifyTrackNotFoundError';
+  }
+}
+
 let refreshPromise: Promise<string> | null = null;
 
 export function getConfiguredClientId(): string {
@@ -208,10 +215,21 @@ export async function handleAuthCallback(code: string, state: string | null): Pr
   clearPendingAuth();
 }
 
-export async function searchTrack(title: string, artist?: string): Promise<SpotifyTrack> {
+export async function searchTrack(title?: string, artist?: string): Promise<SpotifyTrack> {
   const token = await ensureValidAccessToken();
 
-  const query = [title, artist].filter(Boolean).join(' ');
+  const normalizedTitle = title?.trim();
+  const normalizedArtist = artist?.trim();
+  if (!normalizedTitle && !normalizedArtist) {
+    throw new SpotifyTrackNotFoundError('');
+  }
+  const query = [
+    normalizedTitle ? `track:${normalizedTitle}` : '',
+    normalizedArtist ? `artist:${normalizedArtist}` : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+  const displayQuery = [normalizedTitle, normalizedArtist].filter(Boolean).join(' - ');
   const params = new URLSearchParams({
     q: query,
     type: 'track',
@@ -239,7 +257,7 @@ export async function searchTrack(title: string, artist?: string): Promise<Spoti
   const tracks: SpotifyTrack[] = data.tracks?.items ?? [];
 
   if (tracks.length === 0) {
-    throw new Error(`"${title}" 노래를 Spotify에서 찾을 수 없습니다.`);
+    throw new SpotifyTrackNotFoundError(displayQuery);
   }
 
   const playable = tracks.find((t) => t.is_playable !== false) ?? tracks[0];
@@ -249,6 +267,43 @@ export async function searchTrack(title: string, artist?: string): Promise<Spoti
   }
 
   return playable;
+}
+
+export async function searchTrackWithFallback(
+  title?: string,
+  artist?: string,
+  originalInput?: string,
+): Promise<SpotifyTrack> {
+  const candidates: [string | undefined, string | undefined][] = [[title, artist]];
+  if (title && artist) {
+    candidates.push([title, undefined]);
+  }
+  const original = originalInput?.trim();
+  if (original) {
+    candidates.push([original, undefined]);
+  }
+
+  const uniqueCandidates = candidates.filter(
+    ([candidateTitle, candidateArtist], index, list) =>
+      list.findIndex(
+        ([otherTitle, otherArtist]) =>
+          otherTitle?.toLowerCase() === candidateTitle?.toLowerCase() &&
+          otherArtist?.toLowerCase() === candidateArtist?.toLowerCase(),
+      ) === index,
+  );
+
+  let lastNotFound: SpotifyTrackNotFoundError | null = null;
+  for (const [candidateTitle, candidateArtist] of uniqueCandidates) {
+    try {
+      return await searchTrack(candidateTitle, candidateArtist);
+    } catch (error) {
+      if (!(error instanceof SpotifyTrackNotFoundError)) {
+        throw error;
+      }
+      lastNotFound = error;
+    }
+  }
+  throw lastNotFound ?? new SpotifyTrackNotFoundError(original ?? '');
 }
 
 export async function searchPlayableTrack(title: string, artist?: string): Promise<SpotifyTrack | null> {
