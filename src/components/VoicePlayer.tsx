@@ -430,7 +430,9 @@ export function VoicePlayer() {
                           {new Date(song.playedAt).toLocaleString(locale === 'en' ? 'en-US' : 'ko-KR')}
                         </span>
                         <span className="play-count">
-                          {t('playCount', { count: playCount })}
+                          {playCount === 1
+                            ? t('playCountOne')
+                            : t('playCount', { count: playCount })}
                         </span>
                       </div>
                       <span className="history-play-label">{t('play')}</span>
