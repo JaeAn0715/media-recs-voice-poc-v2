@@ -40,6 +40,11 @@ export interface PlayedSong {
   albumImage?: string;
 }
 
+export interface PlayedSongStat {
+  song: PlayedSong;
+  playCount: number;
+}
+
 export interface ExtractedSong {
   title: string;
   artist?: string;

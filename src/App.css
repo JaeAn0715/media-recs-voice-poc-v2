@@ -691,6 +691,18 @@ body {
   color: var(--text-muted);
 }
 
+.play-count {
+  display: inline-block;
+  margin-left: 0.45rem;
+  padding: 0.08rem 0.4rem;
+  border-radius: 999px;
+  background: rgba(29, 185, 84, 0.14);
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 /* Spinner */
 .spinner {
   width: 24px;

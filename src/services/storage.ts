@@ -1,4 +1,9 @@
-import type { LastPlayedSong, PlayedSong, RecommendationSet } from '../types';
+import type {
+  LastPlayedSong,
+  PlayedSong,
+  PlayedSongStat,
+  RecommendationSet,
+} from '../types';
 
 const LAST_PLAYED_KEY = 'lastPlayedSong';
 const PLAY_HISTORY_KEY = 'playedSongs';
@@ -98,29 +103,28 @@ function songKey(song: PlayedSong): string {
 }
 
 export function getMostPlayedSong(played: PlayedSong[] = getPlayedSongs()): PlayedSong | null {
-  if (played.length === 0) {
-    return null;
-  }
+  return getPlayedSongStats(played)[0]?.song ?? null;
+}
 
-  const counts = new Map<string, { song: PlayedSong; count: number }>();
+export function getPlayedSongStats(played: PlayedSong[] = getPlayedSongs()): PlayedSongStat[] {
+  const counts = new Map<string, PlayedSongStat>();
   for (const song of played) {
     const key = songKey(song);
     const existing = counts.get(key);
     if (existing) {
-      existing.count += 1;
+      existing.playCount += 1;
       if (!existing.song.albumImage && song.albumImage) {
-        existing.song = song;
+        existing.song = { ...existing.song, albumImage: song.albumImage };
       }
     } else {
-      counts.set(key, { song, count: 1 });
+      counts.set(key, { song, playCount: 1 });
     }
   }
 
-  let best: { song: PlayedSong; count: number } | null = null;
-  for (const entry of counts.values()) {
-    if (!best || entry.count > best.count) {
-      best = entry;
+  return [...counts.values()].sort((a, b) => {
+    if (b.playCount !== a.playCount) {
+      return b.playCount - a.playCount;
     }
-  }
-  return best?.song ?? played[0];
+    return new Date(b.song.playedAt).getTime() - new Date(a.song.playedAt).getTime();
+  });
 }

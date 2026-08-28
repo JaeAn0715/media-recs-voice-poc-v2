@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useLocale } from '../context/LocaleContext';
 import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 import { useSpotifyPlayer } from '../hooks/useSpotifyPlayer';
@@ -9,7 +9,12 @@ import {
   getSpotifyClientId,
   saveBrowserCredentials,
 } from '../services/credentials';
-import { addPlayedSong, clearPlayedSongs, getPlayedSongs } from '../services/storage';
+import {
+  addPlayedSong,
+  clearPlayedSongs,
+  getPlayedSongs,
+  getPlayedSongStats,
+} from '../services/storage';
 import type { PlayedSong, RecommendedTrack, SpotifyTrack } from '../types';
 import { CredentialsForm } from './CredentialsForm';
 import { RecommendationPanel } from './RecommendationPanel';
@@ -54,6 +59,7 @@ export function VoicePlayer() {
   const logIdRef = useRef(0);
   const runIdRef = useRef(0);
   const logEndRef = useRef<HTMLDivElement | null>(null);
+  const playedSongStats = useMemo(() => getPlayedSongStats(playHistory), [playHistory]);
 
   useEffect(() => {
     setPlayHistory(getPlayedSongs());
@@ -407,8 +413,8 @@ export function VoicePlayer() {
           ) : (
             <>
               <ul>
-                {playHistory.map((song) => (
-                  <li key={`${song.id}-${song.playedAt}`}>
+                {playedSongStats.map(({ song, playCount }) => (
+                  <li key={`${song.id}-${song.title}-${song.artist}`}>
                     <button
                       type="button"
                       className="history-play-button"
@@ -422,6 +428,9 @@ export function VoicePlayer() {
                         <p className="history-artist">{song.artist}</p>
                         <span className="timestamp">
                           {new Date(song.playedAt).toLocaleString(locale === 'en' ? 'en-US' : 'ko-KR')}
+                        </span>
+                        <span className="play-count">
+                          {t('playCount', { count: playCount })}
                         </span>
                       </div>
                       <span className="history-play-label">{t('play')}</span>
